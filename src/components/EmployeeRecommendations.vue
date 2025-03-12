@@ -9,29 +9,17 @@
           <th>Firstname</th>
           <th>Lastname</th>
           <th>Work Time</th>
-          <!-- <th>Allocate</th> -->
-           <th>Skill</th>
+          <th>Skill</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(employee, index) in employees" :key="index">
           <td>{{ index + 1 }}</td>
-          <td>{{ employee.EmpID }}</td>
-          <td>{{ employee.Firstname }}</td>
-          <td>{{ employee.Lastname }}</td>
-          <td>{{ employee.WorkTime }}</td>
-          <td
-              v-for="skill in skills"
-              :key="skill"
-              :class="getSkillLevelClass(employee[skill])"
-            >
-              {{ employee[skill] }}
-            </td>
-            <td>
-            <button @click="$emit('selectEmployee', employee)">
-                <img src="skill.png" alt="Skill" class="skill-icon" />
-            </button>
-          </td>
+          <td>{{ employee.empID }}</td>
+          <td>{{ employee.firstName }}</td>
+          <td>{{ employee.lastName }}</td>
+          <td>{{ employee.workedHours || '-' }}</td> <!-- แสดงค่า Work Time -->
+          <td>{{ employee.skillGroup || '-' }}</td>  <!-- แสดงค่า SkillGroup -->
         </tr>
       </tbody>
     </table>
@@ -39,52 +27,57 @@
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
   name: "EmployeeRecommendations",
-  props: {
-    employees: {
-      type: Array,
-      required: true,
+  data() {
+    return {
+      employees: []  // สร้างตัวแปร employees เพื่อเก็บข้อมูลจาก API
+    };
+  },
+  mounted() {
+    this.fetchEmployeeData();  // เมื่อ component ถูก mount ให้ดึงข้อมูลจาก API
+  },
+  methods: {
+    // ฟังก์ชันในการดึงข้อมูลจาก API
+    async fetchEmployeeData() {
+      try {
+        const response = await axios.get("http://localhost:5000/api/RecEmployee");  // ชื่อ API จาก Backend
+        console.log("Data from API:", response.data);  // ดูข้อมูลที่ได้รับ
+        this.employees = response.data;  // เก็บข้อมูลในตัวแปร employees
+      } catch (error) {
+        console.error("There was an error fetching the data:", error);
+      }
     },
   },
 };
 </script>
 
 <style scoped>
-.employee-recommendations {
-  margin-top: 20px;
-}
+  .employee-recommendations {
+    margin-top: 20px;
+  }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
 
-th, td {
-  padding: 10px;
-  text-align: center;
-  border: 1px solid #ddd;
-}
+  th,
+  td {
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #ddd;
+  }
 
-th {
-  background-color: #f4f4f4;
-}
-
-button {
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-}
-
-th:nth-child(6),
-td:nth-child(6) {
-  width: 80px; /* กำหนดความกว้างเฉพาะคอลัมน์ Skill */
-}
-
+  th {
+    background-color: #f4f4f4;
+  }
 
   .skill-icon {
-  width: 30px;
-  height: 30px;
-  padding: 5px; /* เพิ่มระยะห่างรอบ ๆ ไอคอน */
-}
+    width: 30px;
+    height: 30px;
+    padding: 5px; /* เพิ่มระยะห่างรอบ ๆ ไอคอน */
+  }
 </style>

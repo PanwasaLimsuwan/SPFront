@@ -10,4 +10,5 @@ module.exports = {
       },
     },
   },
-}
+  productionSourceMap: false,  // ปิดการสร้าง Source Maps ในโหมด production
+};

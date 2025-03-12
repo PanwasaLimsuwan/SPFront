@@ -4,80 +4,59 @@
 
 <script>
 import Plotly from "plotly.js";
+import axios from 'axios';
 
 export default {
   name: "BarChart",
-  props: {
-    data: {
-      type: Object,
-      required: true,
-    },
+  data() {
+    return {
+      chartData: [],
+    };
   },
   mounted() {
-    this.drawChart();
-  },
-  watch: {
-    data: {
-      deep: true,
-      handler() {
-        this.drawChart();
-      },
-    },
+    this.fetchChartData(); // เรียกใช้งานฟังก์ชันเมื่อ component ถูก mount
   },
   methods: {
+    async fetchChartData() {
+      try {
+        const response = await axios.get("http://localhost:5000/api/BarChart");
+        this.chartData = response.data; // เก็บข้อมูลที่ได้จาก API
+        this.drawChart(); // วาดกราฟ
+      } catch (error) {
+        console.error("There was an error fetching the data:", error);
+      }
+    },
     drawChart() {
+      const xData = ["ASSY", "MOKU", "CSAT", "JUNB"]; // ค่า x-axis จากข้อมูล Process
+      const materialData = this.chartData.filter(item => item.skillGroup === "Material");
+      const operationData = this.chartData.filter(item => item.skillGroup === "Operation");
+      const inspectionData = this.chartData.filter(item => item.skillGroup === "Inspection");
+
       const chartData = [
         {
-          x: ["ASSY", "MOKU", "CSAT", "JUNB"],
-          y: [2, 2, 2, 1],
+          x: xData,
+          y: materialData.map(item => item.employeeCount),
           name: "Material",
           type: "bar",
-          text: [2, 2, 2, 1], // ตัวเลขที่จะแสดง
-          textposition: "auto", // แสดงบน bar
+          text: materialData.map(item => item.employeeCount),
+          textposition: "auto",
           marker: { color: "#76c7c0" },
         },
         {
-          x: ["ASSY", "MOKU", "CSAT", "JUNB"],
-          y: [1, 0, 1, 0],
+          x: xData,
+          y: operationData.map(item => item.employeeCount),
           name: "Operation",
           type: "bar",
-          text: [1, 0, 1, 0], // ตัวเลขที่จะแสดง
+          text: operationData.map(item => item.employeeCount),
           textposition: "auto",
           marker: { color: "#ff9800" },
         },
         {
-          x: ["ASSY", "MOKU", "CSAT", "JUNB"],
-          y: [0, 0, 1, 0],
-          name: "Machine:SAB#1",
-          type: "bar",
-          text: [0, 0, 1, 0],
-          textposition: "auto",
-          marker: { color: "#ffc107" },
-        },
-        {
-          x: ["ASSY", "MOKU", "CSAT", "JUNB"],
-          y: [0, 0, 1, 0],
-          name: "Machine:SAB#2",
-          type: "bar",
-          text: [0, 0, 1, 0],
-          textposition: "auto",
-          marker: { color: "#8bc34a" },
-        },
-        {
-          x: ["ASSY", "MOKU", "CSAT", "JUNB"],
-          y: [0, 0, 1, 0],
-          name: "Machine:SAB#3",
-          type: "bar",
-          text: [0, 0, 1, 0],
-          textposition: "auto",
-          marker: { color: "#2196f3" },
-        },
-        {
-          x: ["ASSY", "MOKU", "CSAT", "JUNB"],
-          y: [1, 0, 0, 1],
+          x: xData,
+          y: inspectionData.map(item => item.employeeCount),
           name: "Inspection",
           type: "bar",
-          text: [1, 0, 0, 1],
+          text: inspectionData.map(item => item.employeeCount),
           textposition: "auto",
           marker: { color: "#e91e63" },
         },
@@ -93,18 +72,7 @@ export default {
         yaxis: { title: "Employees" },
       };
 
-      Plotly.newPlot("bar-chart", chartData, layout).then((chart) => {
-  chart.on("plotly_click", (data) => {
-    if (data.points && data.points.length > 0) {
-      const clickedSkill = data.points[0].data.name; // ชื่อ skill
-      this.$emit("filterSkill", clickedSkill); // ส่ง event กลับไปที่ parent
-      console.log("Clicked Skill:", clickedSkill); // Debug
-    } else {
-      console.warn("No points clicked!");
-    }
-  });
-});
-
+      Plotly.newPlot("bar-chart", chartData, layout);
     },
   },
 };

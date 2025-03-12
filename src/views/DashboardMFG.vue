@@ -208,6 +208,7 @@
   import ShiftcodeRequireSupport from "./../components/ShiftcodeRequireSupport.vue";
   import WeeklyOvertime from "./../components/WeeklyOvertime.vue";
   import HeadcountPlan from "./../components/HeadcountPlan.vue";
+  // import axios from '@/axios/axios';
   
   export default {
     components: {
@@ -264,6 +265,7 @@
           type: "bar",
         },
         employees: [
+          
           {
             EmpID: "202035",
             Firstname: "Patchara",
@@ -319,6 +321,7 @@
             WorkTime: "40/60 hrs", // Work Time
           },
         ],
+       
         skills: [
           "Material",
           "Operation",
