@@ -47,12 +47,12 @@ export default {
             const { percentage } = this.calculateWorkedHours(emp.WorkTime);
             return percentage; // ใช้เปอร์เซ็นต์ในการแสดงในกราฟ
           }),
-          y: this.data.map(emp => `${emp.firstname} ${emp.lastname}`), // ชื่อพนักงาน
+          y: this.data.map(emp => `${emp.Firstname} ${emp.Lastname}`), // ชื่อพนักงาน
           type: "bar",
           orientation: "h", // แกน Y เป็นชื่อพนักงาน
           marker: {
             color: this.data.map(emp => {
-              const { color } = this.calculateWorkedHours(emp.workTime); // ใช้สีจากการคำนวณ
+              const { color } = this.calculateWorkedHours(emp.WorkTime); // ใช้สีจากการคำนวณ
               return color; // สีที่คำนวณจากเปอร์เซ็นต์
             }),
           },

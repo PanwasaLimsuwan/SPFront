@@ -208,7 +208,7 @@
   import ShiftcodeRequireSupport from "./../components/ShiftcodeRequireSupport.vue";
   import WeeklyOvertime from "./../components/WeeklyOvertime.vue";
   import HeadcountPlan from "./../components/HeadcountPlan.vue";
-  // import axios from '@/axios/axios';
+  import axios from '@/axios/axios';
   
   export default {
     components: {
@@ -232,33 +232,18 @@
     data() {
       return {
         stats: [
-          {
-            value: "7:15",
-            label: "SHIFT : DAY",
-            subLabel: "3/10/2024",
-            icon: "clock.png",
-          },
-          { value: 150, label: "พนักงานทั้งหมด", subLabel: "คน" },
-          {
-            value: 85,
-            label: "In Cleanroom",
-            subLabel: "คน",
-            dotColor: "#00cc66",
-          },
-          {
-            value: 33,
-            label: "Out Cleanroom",
-            subLabel: "คน",
-            dotColor: "#ffcc00",
-          },
-          { value: 0, label: "ขาดงาน", subLabel: "คน", dotColor: "#ff6666" },
-          { value: 11, label: "ต้องการพนักงาน", subLabel: "คน" },
-        ],
-        pieChartData: {
-          values: [85, 33, 5],
-          labels: ["In Cleanroom", "Out Cleanroom", "ขาดงาน"],
-          type: "pie",
-        },
+        { value: "7:15", label: "SHIFT : DAY", subLabel: "3/10/2024", icon: "clock.png" },
+        { value: 0, label: "พนักงานทั้งหมด", subLabel: "คน" },
+        { value: 0, label: "In Cleanroom", subLabel: "คน", dotColor: "#00cc66" },
+        { value: 0, label: "Out Cleanroom", subLabel: "คน", dotColor: "#ffcc00" },
+        { value: 0, label: "ขาดงาน", subLabel: "คน", dotColor: "#ff6666" },
+        { value: 0, label: "ต้องการพนักงาน", subLabel: "คน" },
+      ],
+      pieChartData: {
+        values: [0, 0, 0],
+        labels: ["In Cleanroom", "Out Cleanroom", "ขาดงาน"],
+        type: "pie",
+      },
         barChartData: {
           x: ["ASSY", "MOKU", "CSAT", "JUNB"],
           y: [2, 3, 5, 1],
@@ -536,7 +521,38 @@
           }
         });
       },
+      async fetchCleanroomData() {
+      try {
+        const response = await axios.get("http://localhost:5000/api/CleanroomEntryCount");
+        const data = response.data;
+
+        // อัปเดตข้อมูลใน stats
+        this.stats = [
+          { value: "7:15", label: "SHIFT : DAY", subLabel: "3/10/2024", icon: "clock.png" },
+          {value: data["Total Employees"], label: "พนักงานทั้งหมด", subLabel: "คน"},
+          { value: data["In Cleanroom"], label: "In Cleanroom", subLabel: "คน", dotColor: "#00cc66" },
+          { value: data["Out Cleanroom"], label: "Out Cleanroom", subLabel: "คน", dotColor: "#ffcc00" },
+          { value: data["Absent"], label: "ขาดงาน", subLabel: "คน", dotColor: "#ff6666" },
+          { value: data["Total Require"], label: "ต้องการพนักงาน", subLabel: "คน" },
+        ];
+
+        // อัปเดตข้อมูลใน Pie Chart
+        this.pieChartData = {
+          values: [data["In Cleanroom"], data["Out Cleanroom"], data["Absent"]],
+          labels: ["In Cleanroom", "Out Cleanroom", "ขาดงาน"],
+          type: "pie",
+        };
+      } catch (error) {
+        console.error("Error fetching cleanroom data:", error);
+      }
     },
+
+    // resetFilters() {
+    //   this.filteredEmployees = []; // รีเซ็ตข้อมูลกลับไปที่ทั้งหมด
+    //   console.log("Filters reset. Showing all employees.");
+    // },
+  },
+
     computed: {
       sortedEmployees() {
         return this.sortEmployeesByStatus([...this.employees]);
@@ -549,6 +565,7 @@
       this.filteredSkillEmployees = this.employees;
       this.filteredFullySkilled = this.employees;
       this.filterShiftData();
+      this.fetchCleanroomData(); 
     },
   };
   </script>
