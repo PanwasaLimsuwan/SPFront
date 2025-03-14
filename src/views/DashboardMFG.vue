@@ -185,9 +185,9 @@
       <div class="chart">
         <WeeklyOvertime :data="overtimeData" />
       </div>
-      <div class="chart">
+      <!-- <div class="chart">
         <HeadcountPlan :data="headcountData" />
-      </div>
+      </div> -->
     </section>
   </template>
   
@@ -207,7 +207,7 @@
   import ShiftRequireSupport from "./../components/ShiftRequireSupport.vue";
   import ShiftcodeRequireSupport from "./../components/ShiftcodeRequireSupport.vue";
   import WeeklyOvertime from "./../components/WeeklyOvertime.vue";
-  import HeadcountPlan from "./../components/HeadcountPlan.vue";
+  // import HeadcountPlan from "./../components/HeadcountPlan.vue";
   import axios from '@/axios/axios';
   
   export default {
@@ -227,7 +227,7 @@
       ShiftRequireSupport,
       ShiftcodeRequireSupport,
       WeeklyOvertime,
-      HeadcountPlan,
+      // HeadcountPlan,
     },
     data() {
       return {
