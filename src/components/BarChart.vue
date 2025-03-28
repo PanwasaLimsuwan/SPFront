@@ -10,16 +10,16 @@ export default {
   name: "BarChart",
   data() {
     return {
-      chartData: [],
+      chartData: [],  // เก็บข้อมูลที่ได้จาก API
     };
   },
   mounted() {
-    this.fetchChartData(); // เรียกใช้งานฟังก์ชันเมื่อ component ถูก mount
+    this.fetchChartData();  // เรียกใช้งานฟังก์ชันเมื่อ component ถูก mount
   },
   methods: {
     async fetchChartData() {
       try {
-        const response = await axios.get("http://localhost:5000/api/BarChart");
+        const response = await axios.get("http://localhost:5000/api/BarChart"); // เปลี่ยนเป็น URL ของ API
         this.chartData = response.data; // เก็บข้อมูลที่ได้จาก API
         this.drawChart(); // วาดกราฟ
       } catch (error) {
@@ -31,27 +31,19 @@ export default {
     aggregateData(process, skillGroup) {
       return this.chartData
         .filter(item => item.process === process && item.skillGroup === skillGroup)
-        .reduce((sum, item) => sum + item.employeeCount, 0);
+        .reduce((sum, item) => sum + item.require, 0); // เปลี่ยนจาก employeeCount เป็น require
     },
 
     drawChart() {
-      const xData = ["ASSY", "MOKU", "CSAT", "JUNB"]; // ค่า x-axis จากข้อมูล Process
+      const xData = ["ASSY", "MOKU", "CSAT", "JUNB","BMS","BURN","CSAT3","PCLN","PA","JIK","MPK","PCL","ELU1","AG","HTH","TKA","EGC","LBL","KOC","KSP","KDU","INF","PF","ELU2","FC","PK"]; // ค่า x-axis จากข้อมูล Process
 
       // รวมข้อมูลจำนวนพนักงานในแต่ละ skillGroup
       const materialData = xData.map(process => this.aggregateData(process, "Material"));
       const operationData = xData.map(process => this.aggregateData(process, "Operation"));
       const inspectionData = xData.map(process => this.aggregateData(process, "Inspection"));
-      const MachineSAB1Data = xData.map(process => this.aggregateData(process, "Machine:SAB#1"));
-      const MachineSAB2Data = xData.map(process => this.aggregateData(process, "Machine:SAB#2"));
-      const MachineSAB3Data = xData.map(process => this.aggregateData(process, "Machine:SAB#3"));
-
-      // ตรวจสอบข้อมูลในคอนโซล
-      console.log('Material Data:', materialData);
-      console.log('Operation Data:', operationData);
-      console.log('Inspection Data:', inspectionData);
-      console.log('Machine:SAB#1 Data:', MachineSAB1Data);
-      console.log('Machine:SAB#2 Data:', MachineSAB2Data);
-      console.log('Machine:SAB#3 Data:', MachineSAB3Data);
+      const machineSAB1Data = xData.map(process => this.aggregateData(process, "Machine:SAB#1"));
+      const machineSAB2Data = xData.map(process => this.aggregateData(process, "Machine:SAB#2"));
+      const machineSAB3Data = xData.map(process => this.aggregateData(process, "Machine:SAB#3"));
 
       const chartData = [
         {
@@ -83,28 +75,28 @@ export default {
         },
         {
           x: xData,
-          y: MachineSAB1Data,
+          y: machineSAB1Data,
           name: "Machine:SAB#1",
           type: "bar",
-          text: MachineSAB1Data,
+          text: machineSAB1Data,
           textposition: "auto",
           marker: { color: "#ffc107" },
         },
         {
           x: xData,
-          y: MachineSAB2Data,
+          y: machineSAB2Data,
           name: "Machine:SAB#2",
           type: "bar",
-          text: MachineSAB2Data,
+          text: machineSAB2Data,
           textposition: "auto",
           marker: { color: "#8bc34a" },
         },
         {
           x: xData,
-          y: MachineSAB3Data,
+          y: machineSAB3Data,
           name: "Machine:SAB#3",
           type: "bar",
-          text: MachineSAB3Data,
+          text: machineSAB3Data,
           textposition: "auto",
           marker: { color: "#2196f3" },
         },
@@ -120,7 +112,7 @@ export default {
         yaxis: { title: "Employees" },
       };
 
-      Plotly.newPlot("bar-chart", chartData, layout);
+      Plotly.newPlot("bar-chart", chartData, layout);  // วาดกราฟ
     },
   },
 };
