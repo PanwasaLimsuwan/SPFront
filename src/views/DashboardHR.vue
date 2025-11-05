@@ -518,7 +518,7 @@ function hideAll() {
   <div class="DashboardHR">
     <header class="header">
       <div class="logo-title">
-        <a href="http://localhost:8080/dashboard" class="logo">
+        <a href="https://realtimemonitoring-dashboard.netlify.app/dashboard" class="logo">
           <img src="logo2.png" alt="Sony Logo" />
         </a>
         <h1>Real time monitoring dashboard for leader allocation</h1>

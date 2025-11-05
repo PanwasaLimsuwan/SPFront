@@ -3,7 +3,7 @@
     <!-- ✅ Header and Filters -->
     <header class="header">
       <div class="logo-title">
-        <a href="http://localhost:8080/" class="logo">
+        <a href="https://realtimemonitoring-dashboard.netlify.app/" class="logo">
           <img src="logo2.png" alt="Sony Logo" />
         </a>
         <h1>Real-time Monitoring Dashboard for Leader Allocation</h1>
