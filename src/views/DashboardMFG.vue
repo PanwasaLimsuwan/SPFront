@@ -1,5 +1,13 @@
 <script setup>
-import { ref, markRaw, computed, onMounted, watch, defineComponent, h } from "vue";
+import {
+  ref,
+  markRaw,
+  computed,
+  onMounted,
+  watch,
+  defineComponent,
+  h,
+} from "vue";
 import axios from "axios";
 import draggable from "vuedraggable"; // ✅ เพิ่ม
 import InsightsWidget from "../components/InsightsWidget.vue";
@@ -19,6 +27,7 @@ import EmployeeHeadcountMFG from "../components/EmployeeHeadcountMFG.vue";
 // import StatusTabMFG from "@/components/StatusTabMFG.vue";
 import StatusTabMFG from "../components/StatusTabMFG.vue";
 import Logout from "./Logout";
+// import DynamicChartBuilder from "../components/DynamicChartBuilder.vue"
 
 // import * as jwt_decode from "jwt-decode";
 import jwt_decode from "jwt-decode";
@@ -40,6 +49,8 @@ const selectedStatus = ref(null);
 const selectedSkill = ref(null);
 const selectedEmployee = ref(null);
 const skills = ref([]);
+// let retrievedIds = []; // ประกาศตัวแปร retrievedIds ก่อนเพื่อเก็บค่า
+const retrievedIds = ref([]); // ✅ เปลี่ยนเป็น ref เพื่อให้เป็น reactive
 
 const selectedProcess = ref(null);
 
@@ -84,17 +95,26 @@ onMounted(async () => {
 const filteredEmployees = computed(() => {
   return employees.value.filter((emp) => {
     const matchDivision =
-      filters.value.division === "ALL" || emp.division === filters.value.division;
+      filters.value.division === "ALL" ||
+      emp.division === filters.value.division;
     const matchDepartment =
-      filters.value.department === "ALL" || emp.department === filters.value.department;
+      filters.value.department === "ALL" ||
+      emp.department === filters.value.department;
     const matchSection =
       filters.value.section === "ALL" || emp.section === filters.value.section;
-    const matchBiz = filters.value.biz === "ALL" || emp.biz === filters.value.biz;
+    const matchBiz =
+      filters.value.biz === "ALL" || emp.biz === filters.value.biz;
     const matchProcess =
       filters.value.process === "ALL" || emp.process === filters.value.process;
     // const matchSearch = filters.value.search === '' || emp.firstName?.toLowerCase().includes(filters.value.search.toLowerCase()) || emp.lastName?.toLowerCase().includes(filters.value.search.toLowerCase());
 
-    return matchDivision && matchDepartment && matchSection && matchBiz && matchProcess;
+    return (
+      matchDivision &&
+      matchDepartment &&
+      matchSection &&
+      matchBiz &&
+      matchProcess
+    );
   });
 });
 
@@ -103,8 +123,18 @@ const filterEmployeesByStatus = (status) => {
   selectedStatus.value = status;
 };
 
+const clearStatusFilter = () => {
+  console.log("🔄 Dashboard clearing status filter");
+  selectedStatus.value = null;
+};
+
 const filterEmployeesBySkill = (skill) => {
   selectedSkill.value = skill;
+};
+
+const clearSkillFilter = () => {
+  console.log("🔄 [Dashboard] Clearing skill filter");
+  selectedSkill.value = null;
 };
 
 const selectEmployee = (employee) => {
@@ -140,6 +170,7 @@ const selectEmployee = (employee) => {
 //     </div>
 //   `
 // };
+// ✅ Skills Block Component - แก้ไขให้ใช้ setup function
 const SkillsBlock = defineComponent({
   name: "SkillsBlock",
   components: {
@@ -149,168 +180,371 @@ const SkillsBlock = defineComponent({
   },
   props: {
     filters: Object,
-    selectedSkill: Object,
+    selectedSkill: Number,
     selectedEmployee: Object,
-    employees: Object,
-    skills: Object,
+    employees: Array,
+    skills: Array,
   },
   emits: ["filter-skills", "clear-skill", "selectEmployee"],
-  render() {
-    return h("div", { class: "skills-block" }, [
-      // ซ้าย: Pie
-      h("div", { class: "skills-left" }, [
-        // ✅ ใช้ตัวคอมโพเนนต์ (object) ไม่ใช่สตริง
-        h(fullySkilledPieChart, {
-          // ถ้า child emit เป็น 'filter-skills' ให้ฟังด้วยคีย์นี้
-          "onFilter-skills": (e) => this.$emit("filter-skills", e),
-          filters: this.filters,
-        }),
-      ]),
+  setup(props, { emit }) {
+    console.log("🎨 [SkillsBlock] Setup");
 
-      // ขวา: ตาราง + รายละเอียด
-      h("div", { class: "skills-right skill-section-container" }, [
-        h("div", { class: "skill-table" }, [
-          h(EmployeeSkillTable, {
-            selectedSkillFilter: this.selectedSkill,
-            employees: this.employees,
-            selectedEmployee: this.selectedEmployee,
-            filters: this.filters,
-            "onClear-skill": () => this.$emit("clear-skill"),
-            // ถ้า child emit เป็น 'selectEmployee' (camelCase) ใช้ onSelectEmployee
-            onSelectEmployee: (e) => this.$emit("selectEmployee", e),
+    return () =>
+      h("div", { class: "skills-block" }, [
+        h("div", { class: "skills-left" }, [
+          h(fullySkilledPieChart, {
+            filters: props.filters,
+            onFilterSkills: (skill) => {
+              console.log(
+                "🎯 [SkillsBlock] Pie clicked, emitting filter-skills:",
+                skill
+              );
+              emit("filter-skills", skill);
+            },
           }),
         ]),
-        this.selectedEmployee
-          ? h("div", { class: "skill-detail" }, [
-              h(EmployeeSkillSection, {
-                employee: this.selectedEmployee,
-                skills: this.skills,
-                filters: this.filters,
-              }),
-            ])
-          : null,
-      ]),
-    ]);
+
+        h("div", { class: "skills-right skill-section-container" }, [
+          h("div", { class: "skill-table" }, [
+            h(EmployeeSkillTable, {
+              selectedSkillFilter: props.selectedSkill,
+              employees: props.employees,
+              selectedEmployee: props.selectedEmployee,
+              filters: props.filters,
+              onClearSkill: () => {
+                console.log(
+                  "🎯 [SkillsBlock] Table clear, emitting clear-skill"
+                );
+                emit("clear-skill");
+              },
+              onSelectEmployee: (e) => emit("selectEmployee", e),
+            }),
+          ]),
+          props.selectedEmployee
+            ? h("div", { class: "skill-detail" }, [
+                h(EmployeeSkillSection, {
+                  employee: props.selectedEmployee,
+                  skills: props.skills,
+                  filters: props.filters,
+                }),
+              ])
+            : null,
+        ]),
+      ]);
   },
 });
 
+// เพิ่มในส่วน <script setup>
+const availableWidgets = ref([]); // เก็บ widget definitions จาก API
+
+// ฟังก์ชันโหลด widget definitions
+const fetchAvailableWidgets = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/AdminWidget`);
+    availableWidgets.value = response.data.filter((w) => w.isActive); // เอาแค่ที่ active
+    console.log("✅ Available widgets loaded:", availableWidgets.value);
+  } catch (error) {
+    console.error("❌ Error fetching widget definitions:", error);
+  }
+};
+
+// Component mapping - ใช้สำหรับแปลง componentName เป็น Vue component จริง
+const componentMap = {
+  InsightsWidget: markRaw(InsightsWidget),
+  HeadcountStatusMFG: markRaw(HeadcountStatusMFG),
+  EmployeeHeadcountMFG: markRaw(EmployeeHeadcountMFG),
+  RequiredBarChart: markRaw(RequiredBarChart),
+  EmployeeRecommendations: markRaw(EmployeeRecommendations),
+  SkillsBlock: markRaw(SkillsBlock),
+  WorkedTimeChart: markRaw(WorkedTimeChart),
+  WeeklyOvertime: markRaw(WeeklyOvertime),
+  MonthlyWorkedTimeOverload: markRaw(MonthlyWorkedTimeOverload),
+  WeeklyAbsentTrend: markRaw(WeeklyAbsentTrend),
+  HeadcountPlan: markRaw(HeadcountPlan),
+};
+
+// ฟังก์ชันสร้าง widgets จาก API definitions
+const buildWidgetsFromDefinitions = () => {
+  const builtWidgets = availableWidgets.value
+    .map((def) => ({
+      id: def.widgetId,
+      title: def.displayName,
+      comp: componentMap[def.componentName] || null,
+      span2: def.span2,
+      binds: () => {
+        // กำหนด binds ตาม widget type
+        switch (def.widgetId) {
+          case "insights":
+            return { filters: filters.value };
+          case "headcountStatus":
+            return { filters: filters.value };
+          case "headcountTable":
+            return {
+              filterStatus: selectedStatus.value,
+              filters: filters.value,
+            };
+          case "requiredBar":
+            return { filters: filters.value };
+          case "recommendations":
+            return {
+              selectedProcess: selectedProcess.value,
+              selectedSkill: selectedSkill.value,
+              filters: filters.value,
+            };
+          case "skillsBlock":
+            return {
+              filters: filters.value,
+              selectedSkill: selectedSkill.value,
+              selectedEmployee: selectedEmployee.value,
+              employees: filteredEmployees.value,
+              skills: skills.value,
+            };
+          case "workedTime":
+          case "weeklyOvertime":
+          case "monthlyOverload":
+          case "weeklyAbsent":
+          case "headcountPlan":
+            return { filters: filters.value };
+          default:
+            return {};
+        }
+      },
+      on: () => {
+        // กำหนด event handlers ตาม widget type
+        switch (def.widgetId) {
+          case "headcountStatus":
+            return { filterStatus: filterEmployeesByStatus };
+          case "headcountTable":
+            return { clearStatus: clearStatusFilter };
+          case "recommendations":
+            return { selectEmployee };
+          case "skillsBlock":
+            return {
+              filterSkills: filterEmployeesBySkill,
+              clearSkill: clearSkillFilter,
+              selectEmployee,
+            };
+          default:
+            return {};
+        }
+      },
+    }))
+    .filter((w) => w.comp !== null); // กรอง widget ที่ไม่มี component
+
+  return builtWidgets;
+};
+
 // ลิสต์วิดเจ็ตเริ่มต้น (ลำดับเริ่มต้น)
-const widgets = ref([
-  // ⬇️ ใส่การ์ด Insights เข้าไปสักตำแหน่ง (บนสุดก็ได้)
-  {
-    id: "insights",
-    title: "insights",
-    comp: markRaw(InsightsWidget),
-    span2: true,
-    binds: () => ({ filters: filters.value }),
-    on: () => ({}),
-  },
+// const widgets = ref([
+//   // ⬇️ ใส่การ์ด Insights เข้าไปสักตำแหน่ง (บนสุดก็ได้)
+//   // {
+//   //   id: 'dynamicChart',
+//   //   title: 'Dynamic Chart Builder',
+//   //   comp: markRaw(DynamicChartBuilder),
+//   //   span2: true, // กิน 2 คอลัมน์
+//   //   binds: () => ({}),
+//   //   on: () => ({})
+//   // },
+//   {
+//     id: "insights",
+//     title: "insights",
+//     comp: markRaw(InsightsWidget),
+//     span2: true,
+//     binds: () => ({ filters: filters.value }),
+//     on: () => ({}),
+//   },
 
-  // { id: 'statusTab',       comp: StatusTabMFG,             binds: () => ({ filters: filters.value }), on: () => ({}) },
-  {
-    id: "headcountStatus",
-    title: "headcountStatus",
-    comp: markRaw(HeadcountStatusMFG),
-    binds: () => ({ filters: filters.value }),
-    on: () => ({ "filter-status": filterEmployeesByStatus }),
-  },
-  {
-    id: "headcountTable",
-    title: "headcountTable",
-    comp: markRaw(EmployeeHeadcountMFG),
-    binds: () => ({
-      employees: filteredEmployees.value,
-      filterStatus: selectedStatus.value,
-      filters: filters.value,
-    }),
-    on: () => ({ "clear-status": () => (selectedStatus.value = null) }),
-  },
-  {
-    id: "requiredBar",
-    title: "requiredBar",
-    comp: markRaw(RequiredBarChart),
-    binds: () => ({ filters: filters.value }),
-    on: () => ({}),
-  },
-  {
-    id: "recommendations",
-    title: "recommendations",
-    comp: markRaw(EmployeeRecommendations),
-    binds: () => ({
-      selectedProcess: selectedProcess.value,
-      selectedSkill: selectedSkill.value,
-      filters: filters.value,
-    }),
-    on: () => ({ selectEmployee }),
-  },
-  // { id: 'fullySkilled',    comp: fullySkilledPieChart,     binds: () => ({ filters: filters.value }), on: () => ({ 'filter-skills': filterEmployeesBySkill }) },
-  // { id: 'skillPanel',      comp: SkillPanel,               binds: () => ({ selectedSkill: selectedSkill.value, employees: filteredEmployees.value, selectedEmployee: selectedEmployee.value, skills: skills.value, filters: filters.value }), on: () => ({ 'clear-skill': () => (selectedSkill.value = null), selectEmployee }) },
+//   // { id: 'statusTab',       comp: StatusTabMFG,             binds: () => ({ filters: filters.value }), on: () => ({}) },
+//   // {
+//   //   id: "headcountStatus",
+//   //   title: "headcountStatus",
+//   //   comp: markRaw(HeadcountStatusMFG),
+//   //   binds: () => ({ filters: filters.value }),
+//   //   on: () => ({ "filter-status": filterEmployeesByStatus }),
+//   // },
+//   // {
+//   //   id: "headcountTable",
+//   //   title: "headcountTable",
+//   //   comp: markRaw(EmployeeHeadcountMFG),
+//   //   binds: () => ({
+//   //     employees: filteredEmployees.value,
+//   //     filterStatus: selectedStatus.value,
+//   //     filters: filters.value,
+//   //   }),
+//   //   on: () => ({ "clear-status": () => (selectedStatus.value = null) }),
+//   // },
+//   {
+//     id: "headcountStatus",
+//     title: "Headcount Status",
+//     comp: markRaw(HeadcountStatusMFG),
+//     binds: () => ({ filters: filters.value }),
+//     on: () => ({
+//       filterStatus: filterEmployeesByStatus  // ✅ รับ event จาก Pie Chart
+//     }),
+//   },
+//   {
+//     id: "headcountTable",
+//     title: "Employee Headcount",
+//     comp: markRaw(EmployeeHeadcountMFG),
+//     binds: () => ({
+//       filterStatus: selectedStatus.value,  // ✅ ส่ง selectedStatus แบบ camelCase
+//       filters: filters.value,
+//     }),
+//     on: () => ({
+//       clearStatus: clearStatusFilter  // ✅ รับ event clear จาก Table
+//     }),
+//   },
+//   {
+//     id: "requiredBar",
+//     title: "requiredBar",
+//     comp: markRaw(RequiredBarChart),
+//     binds: () => ({ filters: filters.value }),
+//     on: () => ({}),
+//   },
+//   {
+//     id: "recommendations",
+//     title: "recommendations",
+//     comp: markRaw(EmployeeRecommendations),
+//     binds: () => ({
+//       selectedProcess: selectedProcess.value,
+//       selectedSkill: selectedSkill.value,
+//       filters: filters.value,
+//     }),
+//     on: () => ({ selectEmployee }),
+//   },
+//   // { id: 'fullySkilled',    comp: fullySkilledPieChart,     binds: () => ({ filters: filters.value }), on: () => ({ 'filter-skills': filterEmployeesBySkill }) },
+//   // { id: 'skillPanel',      comp: SkillPanel,               binds: () => ({ selectedSkill: selectedSkill.value, employees: filteredEmployees.value, selectedEmployee: selectedEmployee.value, skills: skills.value, filters: filters.value }), on: () => ({ 'clear-skill': () => (selectedSkill.value = null), selectEmployee }) },
 
-  {
-    id: "skillsBlock",
-    title: "skillsBlock",
-    comp: markRaw(SkillsBlock),
-    // ถ้าอยากให้ยาวเต็มแถว คอมเมนต์ span2 เปิดไว้ แล้วเพิ่ม CSS ข้างล่าง
-    span2: true,
-    binds: () => ({
-      filters: filters.value,
-      selectedSkill: selectedSkill.value,
-      selectedEmployee: selectedEmployee.value,
-      employees: filteredEmployees.value,
-      skills: skills.value,
-    }),
-    on: () => ({
-      "filter-skills": filterEmployeesBySkill,
-      "clear-skill": () => (selectedSkill.value = null),
-      selectEmployee,
-    }),
-  },
+//   {
+//     id: "skillsBlock",
+//     title: "skillsBlock",
+//     comp: markRaw(SkillsBlock),
+//     // ถ้าอยากให้ยาวเต็มแถว คอมเมนต์ span2 เปิดไว้ แล้วเพิ่ม CSS ข้างล่าง
+//     span2: true,
+//     binds: () => ({
+//       filters: filters.value,
+//       selectedSkill: selectedSkill.value,
+//       selectedEmployee: selectedEmployee.value,
+//       employees: filteredEmployees.value,
+//       skills: skills.value,
+//     }),
+//     on: () => ({
+//       // "filter-skills": filterEmployeesBySkill,
+//       // "clear-skill": () => (selectedSkill.value = null),
+//       filterSkills: filterEmployeesBySkill,  // ✅ camelCase ไม่มี quotes
+//       clearSkill: clearSkillFilter,          // ✅ camelCase ไม่มี quotes
+//       selectEmployee,
+//     }),
+//   },
 
-  {
-    id: "workedTime",
-    title: "workedTime",
-    comp: markRaw(WorkedTimeChart),
-    binds: () => ({ filters: filters.value }),
-    on: () => ({}),
-  },
-  {
-    id: "weeklyOvertime",
-    title: "weeklyOvertime",
-    comp: markRaw(WeeklyOvertime),
-    binds: () => ({ filters: filters.value }),
-    on: () => ({}),
-  },
-  {
-    id: "monthlyOverload",
-    title: "monthlyOverload",
-    comp: markRaw(MonthlyWorkedTimeOverload),
-    binds: () => ({ filters: filters.value }),
-    on: () => ({}),
-  },
-  {
-    id: "weeklyAbsent",
-    title: "weeklyAbsent",
-    comp: markRaw(WeeklyAbsentTrend),
-    binds: () => ({ filters: filters.value }),
-    on: () => ({}),
-  },
-  {
-    id: "headcountPlan",
-    title: "headcountPlan",
-    comp: markRaw(HeadcountPlan),
-    span2: true,
-    binds: () => ({ filters: filters.value }),
-    on: () => ({}),
-  },
-]);
+//   {
+//     id: "workedTime",
+//     title: "workedTime",
+//     comp: markRaw(WorkedTimeChart),
+//     binds: () => ({ filters: filters.value }),
+//     on: () => ({}),
+//   },
+//   {
+//     id: "weeklyOvertime",
+//     title: "weeklyOvertime",
+//     comp: markRaw(WeeklyOvertime),
+//     binds: () => ({ filters: filters.value }),
+//     on: () => ({}),
+//   },
+//   {
+//     id: "monthlyOverload",
+//     title: "monthlyOverload",
+//     comp: markRaw(MonthlyWorkedTimeOverload),
+//     binds: () => ({ filters: filters.value }),
+//     on: () => ({}),
+//   },
+//   {
+//     id: "weeklyAbsent",
+//     title: "weeklyAbsent",
+//     comp: markRaw(WeeklyAbsentTrend),
+//     binds: () => ({ filters: filters.value }),
+//     on: () => ({}),
+//   },
+//   {
+//     id: "headcountPlan",
+//     title: "headcountPlan",
+//     comp: markRaw(HeadcountPlan),
+//     span2: true,
+//     binds: () => ({ filters: filters.value }),
+//     on: () => ({}),
+//   },
+// ]);
+// ลบหรือคอมเมนต์ส่วนนี้ออก (widgets แบบ hard-code)
+// const widgets = ref([
+//   { id: 'insights', ... },
+//   ...
+// ]);
+
+// เปลี่ยนเป็น
+const widgets = ref([]);
+
+// แก้ไข onMounted ให้โหลดตามลำดับที่ถูกต้อง
+onMounted(async () => {
+  console.log("🚀 Dashboard mounting...");
+  
+  // 1. โหลด employee data
+  try {
+    const response = await axios.get("http://localhost:5000/api/EmployeeInfo");
+    employees.value = response.data;
+    console.log("✅ Employees loaded:", employees.value.length);
+  } catch (error) {
+    console.error("❌ Error fetching employees:", error);
+  }
+
+  // 2. โหลด widget definitions จาก API
+  await fetchAvailableWidgets();
+  console.log("✅ Available widgets loaded:", availableWidgets.value.length);
+
+  // 3. สร้าง widgets จาก definitions (ใช้ displayOrder จาก API)
+  const builtWidgets = buildWidgetsFromDefinitions();
+  console.log("✅ Built widgets:", builtWidgets.length);
+
+  // 4. โหลด user settings (ลำดับ + visibility)
+  const savedOrder = await fetchWidgetSettings();
+  console.log("✅ Saved widget order:", savedOrder);
+
+  // 5. จัดเรียง widgets ตาม user settings หรือ default order
+  if (savedOrder && savedOrder.length > 0) {
+    console.log("📌 Applying saved order");
+    retrievedIds.value = savedOrder;
+    
+    // จัดเรียงตาม saved order
+    const map = new Map(builtWidgets.map((w) => [w.id, w]));
+    const ordered = savedOrder.map((id) => map.get(id)).filter(Boolean);
+    const rest = builtWidgets.filter((w) => !savedOrder.includes(w.id));
+    widgets.value = [...ordered, ...rest];
+  } else {
+    console.log("📌 Using default displayOrder");
+    // ใช้ลำดับจาก displayOrder ใน API
+    widgets.value = builtWidgets.sort((a, b) => {
+      const defA = availableWidgets.value.find((d) => d.widgetId === a.id);
+      const defB = availableWidgets.value.find((d) => d.widgetId === b.id);
+      return (defA?.displayOrder || 999) - (defB?.displayOrder || 999);
+    });
+  }
+
+  console.log("✅ Final widget order:", widgets.value.map(w => w.id));
+
+  // 6. Initialize visibility defaults
+  initVisibilityDefault();
+
+  // 7. Start polling for assignments
+  fetchAssignmentsStatus();
+  setInterval(fetchAssignmentsStatus, 5000);
+});
 
 // helper: ใช้ layout ที่โหลดจาก API มาจัดเรียง widgets
-function applyLayoutFromIds(ids) {
-  const map = new Map(widgets.value.map((w) => [w.id, w]));
-  const ordered = ids.map((id) => map.get(id)).filter(Boolean);
-  const rest = widgets.value.filter((w) => !ids.includes(w.id));
-  widgets.value = [...ordered, ...rest];
-}
+// function applyLayoutFromIds(ids) {
+//   const map = new Map(widgets.value.map((w) => [w.id, w]));
+//   const ordered = ids.map((id) => map.get(id)).filter(Boolean);
+//   const rest = widgets.value.filter((w) => !ids.includes(w.id));
+//   widgets.value = [...ordered, ...rest];
+// }
 
 // โหลดลำดับจาก API (หลังจาก mount)
 
@@ -327,6 +561,35 @@ function applyLayoutFromIds(ids) {
 //     }
 //   }, 400);
 // }, { deep: true });
+
+// ==== Visibility prefs (ซ่อน/แสดงวิดเจ็ต) ====
+const panelOpen = ref(false);
+const visibility = ref({}); // { [id]: true|false }
+
+// const niceNames = {
+//   dynamicChart: 'Dynamic Chart Builder',
+//   insights: "Insights",
+
+//   headcountStatus: "Headcount Status",
+//   headcountTable: "Employee Headcount",
+//   requiredBar: "Required Bar Chart",
+//   recommendations: "Employee Recommendations",
+//   skillsBlock: "Skills & Skill Detail",
+//   workedTime: "Worked Time",
+//   weeklyOvertime: "Weekly Overtime",
+//   monthlyOverload: "Monthly Worked Time Overload",
+//   weeklyAbsent: "Weekly Absent Trend",
+//   headcountPlan: "Headcount Plan",
+// };
+// เปลี่ยนจาก object แบบ hard-code เป็น computed
+const niceNames = computed(() => {
+  const names = {};
+  for (const def of availableWidgets.value) {
+    names[def.widgetId] = def.displayName;
+  }
+  return names;
+});
+
 watch(
   widgets,
   () => {
@@ -342,25 +605,6 @@ watch(
   { deep: true }
 );
 
-// ==== Visibility prefs (ซ่อน/แสดงวิดเจ็ต) ====
-const panelOpen = ref(false);
-const visibility = ref({}); // { [id]: true|false }
-
-const niceNames = {
-  insights: "Insights",
-
-  headcountStatus: "Headcount Status",
-  headcountTable: "Employee Headcount",
-  requiredBar: "Required Bar Chart",
-  recommendations: "Employee Recommendations",
-  skillsBlock: "Skills & Skill Detail",
-  workedTime: "Worked Time",
-  weeklyOvertime: "Weekly Overtime",
-  monthlyOverload: "Monthly Worked Time Overload",
-  weeklyAbsent: "Weekly Absent Trend",
-  headcountPlan: "Headcount Plan",
-};
-
 // ฟังก์ชันที่จะบันทึกการตั้งค่า widget
 // หลังจากบันทึกการตั้งค่า widget เสร็จ
 const saveWidgetSettings = async () => {
@@ -369,7 +613,7 @@ const saveWidgetSettings = async () => {
   if (token) {
     try {
       const decodedToken = jwt_decode(token);
-      const userEmail = decodedToken.sub;  // ใช้ sub (อีเมลของผู้ใช้)
+      const userEmail = decodedToken.sub; // ใช้ sub (อีเมลของผู้ใช้)
 
       if (!userEmail) {
         console.error("User email (sub) not found in token");
@@ -377,7 +621,9 @@ const saveWidgetSettings = async () => {
       }
 
       // ค้นหาข้อมูล user_id จากฐานข้อมูลโดยใช้ userEmail
-      const response = await axios.get(`http://localhost:5000/api/admin/get-user-id?email=${userEmail}`);
+      const response = await axios.get(
+        `http://localhost:5000/api/admin/get-user-id?email=${userEmail}`
+      );
       const user_id = response.data.user_id;
       if (!user_id) {
         console.error("User ID not found in database");
@@ -405,7 +651,9 @@ const saveWidgetSettings = async () => {
       console.log("Widget settings saved:", saveResponse.data);
 
       // เรียก fetchWidgetSettings เพื่อโหลดการตั้งค่าใหม่หลังจากบันทึก
-      await fetchWidgetSettings();  // เรียกฟังก์ชันเพื่อดึงข้อมูลใหม่หลังจากบันทึกเสร็จ
+      // await fetchWidgetSettings(); // เรียกฟังก์ชันเพื่อดึงข้อมูลใหม่หลังจากบันทึกเสร็จ
+      // ✅ แทนที่ด้วยการอัพเดท retrievedIds
+      retrievedIds.value = widgets.value.map((w) => w.id);
     } catch (error) {
       console.error("Error saving widget settings:", error);
     }
@@ -414,15 +662,169 @@ const saveWidgetSettings = async () => {
   }
 };
 
+// ฟังก์ชันดึงข้อมูลการตั้งค่าของ Widget จากฐานข้อมูล
+// const fetchWidgetSettings = async () => {
+//   const token = localStorage.getItem("token");
+
+//   if (token) {
+//     try {
+//       const decodedToken = jwt_decode(token); // Decode token
+//       const userEmail = decodedToken.sub; // ใช้ sub (อีเมลของผู้ใช้)
+
+//       if (!userEmail) {
+//         console.error("User email (sub) not found in token");
+//         return;
+//       }
+
+//       const response = await axios.get(
+//         `http://localhost:5000/api/admin/get-user-id?email=${userEmail}`
+//       );
+//       const user_id = response.data.user_id;
+//       if (!user_id) {
+//         console.error("User ID not found in database");
+//         return;
+//       }
+
+//       // ดึงข้อมูล widget settings สำหรับ user_id นี้
+//       const widgetResponse = await axios.get(
+//         `http://localhost:5000/api/widget/get-widget-settings/${user_id}`
+//       );
+
+//       // console.log("Widget settings response:", widgetResponse.data);
+
+//       if (!widgetResponse.data || !widgetResponse.data.widgets) {
+//         console.error(
+//           "No widgets found in widget response:",
+//           widgetResponse.data
+//         );
+//         return;
+//       }
+
+//       // **กำหนด retrievedIds**
+//       // const retrievedIds = widgetResponse.data.widgets.map(
+//       //   (widget) => widget.id
+//       // );
+//       retrievedIds.value = widgetResponse.data.widgets.map(
+//         (widget) => widget.id
+//       );
+//       // สร้างอาร์เรย์ของ id
+//       // console.log("retrievedIds:", retrievedIds); // ตรวจสอบการตั้งค่า
+
+//       // เรียกฟังก์ชัน applyLayoutFromIds
+//       applyLayoutFromIds(retrievedIds); // ส่ง retrievedIds ที่ได้จาก API
+
+//       // แปลง settings ที่ได้จาก API
+//       const settings = widgetResponse.data.widgets;
+//       if (Array.isArray(settings)) {
+//         widgets.value.forEach((widget) => {
+//           const widgetSetting = settings.find(
+//             (setting) => setting.id === widget.id
+//           );
+//           if (widgetSetting) {
+//             visibility.value[widget.id] = widgetSetting.visibility;
+//           }
+//         });
+//       } else {
+//         console.error("widgetResponse.data.widgets is not an array:", settings);
+//       }
+//     } catch (error) {
+//       console.error("Error fetching widget settings:", error);
+//     }
+//   } else {
+//     console.error("No token found");
+//   }
+// };
+// แก้ไข fetchWidgetSettings ให้ return ค่า settings
+const fetchWidgetSettings = async () => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    console.error("No token found");
+    return null;
+  }
+
+  try {
+    const decodedToken = jwt_decode(token);
+    const userEmail = decodedToken.sub;
+
+    if (!userEmail) {
+      console.error("User email (sub) not found in token");
+      return null;
+    }
+
+    // ดึง user_id
+    const response = await axios.get(
+      `http://localhost:5000/api/admin/get-user-id?email=${userEmail}`
+    );
+    const user_id = response.data.user_id;
+    
+    if (!user_id) {
+      console.error("User ID not found in database");
+      return null;
+    }
+
+    // ดึง widget settings
+    const widgetResponse = await axios.get(
+      `http://localhost:5000/api/widget/get-widget-settings/${user_id}`
+    );
+
+    console.log("📥 Widget settings loaded:", widgetResponse.data);
+
+    if (!widgetResponse.data?.widgets) {
+      console.warn("No saved widgets found, will use default order");
+      return null;
+    }
+
+    // อัพเดท visibility
+    const settings = widgetResponse.data.widgets;
+    settings.forEach((setting) => {
+      visibility.value[setting.id] = setting.visibility;
+    });
+
+    // return widget IDs order
+    return settings.map((w) => w.id);
+    
+  } catch (error) {
+    console.error("Error fetching widget settings:", error);
+    return null;
+  }
+};
+
 // ใช้ watch เพื่อติดตามการเปลี่ยนแปลงใน widgets และ visibility
 // watch([widgets, visibility], () => {
 //   saveWidgetSettings(); // บันทึกการตั้งค่าทุกครั้งที่ widgets หรือ visibility เปลี่ยนแปลง
 // }, { deep: true });
-watch(widgets, () => {
-  // เรียก saveWidgetSettings ทุกครั้งที่ widgets หรือ visibility เปลี่ยนแปลง
-  saveWidgetSettings();
-}, { deep: true });
 
+// ✅ เปลี่ยนจาก watch ที่บันทึกทุกครั้ง เป็นบันทึกเฉพาะเมื่อ drag เสร็จ
+const isDragging = ref(false);
+
+// ❌ ลบ watch แบบเก่าออก
+// watch(widgets, () => {
+//   saveWidgetSettings();
+// }, { deep: true });
+
+// ✅ ใช้ฟังก์ชันเมื่อ drag เสร็จเท่านั้น
+const onDragEnd = async () => {
+  console.log("🔄 Drag ended, saving widget order...");
+  isDragging.value = false;
+  await saveWidgetSettings();
+};
+
+// ✅ Watch เฉพาะ visibility (ไม่ใช่ widgets)
+watch(
+  visibility,
+  () => {
+    if (!isDragging.value) {
+      saveWidgetSettings();
+    }
+  },
+  { deep: true }
+);
+
+// ❌ ลบ onModelValueUpdate ออก (ไม่จำเป็น)
+// const onModelValueUpdate = (newValue) => {
+//   console.log("Model value updated:", newValue);
+// };
 
 const assignments = ref([]); // ประกาศตัวแปร assignments เพื่อเก็บข้อมูล assignments
 const showModal = ref(false); // เปิด/ปิด modal
@@ -442,56 +844,19 @@ const closeModal = () => {
 // ฟังก์ชันบันทึกข้อมูล
 const saveAssignment = () => {
   // ทำการบันทึกข้อมูล assignment ที่เลือก
-  console.log('บันทึกข้อมูล:', selectedAssignment.value);
+  console.log("บันทึกข้อมูล:", selectedAssignment.value);
   closeModal(); // ปิด modal หลังบันทึก
 };
 
-// ฟังก์ชันดึงข้อมูลการตั้งค่าของ Widget จากฐานข้อมูล
-const fetchWidgetSettings = async () => {
-  const token = localStorage.getItem("token");
+const handleLogout = async () => {
+  await saveWidgetSettings(); // บันทึกการตั้งค่าก่อน logout
+  localStorage.removeItem("token");
+  window.location.href = "/login";
+};
 
-  if (token) {
-    try {
-      const decodedToken = jwt_decode(token);  // Decode token
-      const userEmail = decodedToken.sub; // ใช้ sub (อีเมลของผู้ใช้)
-
-      if (!userEmail) {
-        console.error("User email (sub) not found in token");
-        return;
-      }
-
-      // ค้นหาข้อมูล user_id จากฐานข้อมูลโดยใช้ userEmail
-      const response = await axios.get(`http://localhost:5000/api/admin/get-user-id?email=${userEmail}`);
-      const user_id = response.data.user_id;
-      if (!user_id) {
-        console.error("User ID not found in database");
-        return;
-      }
-
-      // ดึงข้อมูล widget settings ของ user_id นี้
-      const widgetResponse = await axios.get(`http://localhost:5000/api/widget/get-widget-settings/${user_id}`);
-      console.log("Widget settings response:", widgetResponse.data);
-
-      // ตรวจสอบว่า widgetResponse.data.widgets มีข้อมูลหรือไม่
-      if (!widgetResponse.data || !Array.isArray(widgetResponse.data.widgets)) {
-        console.error("No widgets found in widget response:", widgetResponse.data);
-        return;
-      }
-
-      // กำหนด settings จากข้อมูลที่ได้
-      const settings = widgetResponse.data.widgets; // เนื่องจากมี widgets อยู่ใน response ตรงนี้
-
-      // อัปเดต widgets และ visibility ตามที่ดึงมา
-      widgets.value = settings;
-      settings.forEach((widget) => {
-        visibility.value[widget.id] = widget.visibility;  // อัปเดต visibility
-      });
-    } catch (error) {
-      console.error("Error fetching widget settings:", error);
-    }
-  } else {
-    console.error("No token found");
-  }
+const onModelValueUpdate = (newValue) => {
+  // handle model value update
+  console.log("Model value updated:", newValue);
 };
 
 const fetchAssignmentsStatus = async () => {
@@ -523,12 +888,13 @@ function initVisibilityDefault() {
 //   setInterval(fetchAssignmentsStatus, 5000); // อัพเดตข้อมูลทุก 5 วินาที
 // });
 
-onMounted(async () => {
-  initVisibilityDefault();
-  await fetchWidgetSettings(); // ดึงการตั้งค่า widget มาใช้
-  fetchAssignmentsStatus(); // เรียกใช้ฟังก์ชันตอนที่คอมโพเนนต์โหลดเสร็จ
-  setInterval(fetchAssignmentsStatus, 5000); // อัพเดตข้อมูลทุก 5 วินาที
-});
+// onMounted(async () => {
+//   initVisibilityDefault();
+//   await fetchWidgetSettings(); // ดึงการตั้งค่า widget มาใช้
+//   // applyLayoutFromIds(retrievedIds);
+//   fetchAssignmentsStatus(); // เรียกใช้ฟังก์ชันตอนที่คอมโพเนนต์โหลดเสร็จ
+//   setInterval(fetchAssignmentsStatus, 5000); // อัพเดตข้อมูลทุก 5 วินาที
+// });
 
 // ปุ่มลัด
 function showAll() {
@@ -544,25 +910,33 @@ function hideAll() {
     <!-- ✅ ฟิลเตอร์ยังอยู่ใน header -->
     <header class="header">
       <div class="logo-title">
-        <a href="http://localhost:8080/" class="logo">
+        <a href="http://localhost:8080/dashboard" class="logo">
           <img src="logo2.png" alt="Sony Logo" />
         </a>
         <h1>Real time monitoring dashboard for leader allocation</h1>
         <h1 style="color: red">For MFG</h1>
-        <Logout />
+        <!-- <Logout /> -->
       </div>
-
+      <Logout />
       <!-- ✅ FILTERS: คงไว้ตามเดิม -->
       <div class="filters">
         <select v-model="filters.division">
           <option value="ALL">Division : ALL</option>
-          <option v-for="division in divisions" :key="division" :value="division">
+          <option
+            v-for="division in divisions"
+            :key="division"
+            :value="division"
+          >
             {{ division }}
           </option>
         </select>
         <select v-model="filters.department">
           <option value="ALL">Department : ALL</option>
-          <option v-for="department in departments" :key="department" :value="department">
+          <option
+            v-for="department in departments"
+            :key="department"
+            :value="department"
+          >
             {{ department }}
           </option>
         </select>
@@ -592,23 +966,30 @@ function hideAll() {
       </button>
     </header>
 
+    <!-- ✅ เพิ่มตรงนี้ -->
+    <!-- <AssignmentNotification
+      :userProcess="currentUserProcess"
+      :filters="filters"
+      @refresh="fetchEmployees"
+    /> -->
+
     <!-- การแสดงรายการ assignments ที่รอการอนุมัติ -->
-    <div v-if="assignments.length === 0">
+    <!-- <div v-if="assignments.length === 0">
       <p>ไม่พบงานที่รอการอนุมัติ</p>
     </div>
     <div v-else>
-      <!-- แสดงรายการ assignments -->
       <ul>
         <li
           v-for="assignment in assignments"
           :key="assignment.assignmentID"
-          @click="openModal(assignment)">
-          {{ assignment.toProcess }} - {{ assignment.toBiz }} - {{ assignment.status }}
+          @click="openModal(assignment)"
+        >
+          {{ assignment.toProcess }} - {{ assignment.toBiz }} -
+          {{ assignment.status }}
         </li>
       </ul>
     </div>
 
-    <!-- Modal สำหรับการยืนยันการย้ายพนักงาน -->
     <div v-if="showModal" class="modal">
       <div class="modal-content">
         <h3>ยืนยันการย้ายพนักงาน</h3>
@@ -631,14 +1012,20 @@ function hideAll() {
           class="input-field"
         />
 
-        <div style="display: flex; gap: 8px; margin-top: 10px;">
-          <button class="refresh-skill-btn" @click="saveAssignment">บันทึกข้อมูล</button>
-          <button class="refresh-skill-btn" @click="closeModal" style="background: #6c757d;">
+        <div style="display: flex; gap: 8px; margin-top: 10px">
+          <button class="refresh-skill-btn" @click="saveAssignment">
+            บันทึกข้อมูล
+          </button>
+          <button
+            class="refresh-skill-btn"
+            @click="closeModal"
+            style="background: #6c757d"
+          >
             ยกเลิก
           </button>
-        </div>
-      </div> <!-- ปิดแท็ก modal-content ที่นี่ -->
-    </div> <!-- ปิดแท็ก modal ที่นี่ -->
+        </div> -->
+      <!-- </div>
+    </div> -->
 
     <!-- ✅ StatusTabMFG อยู่นอก widgets ได้ -->
     <section class="stats">
@@ -646,51 +1033,48 @@ function hideAll() {
     </section>
 
     <!-- ✅ โซนลากสลับลำดับ (แทนทุก charts เดิม) -->
-<draggable
-  v-model="widgets"
-  item-key="id"
-  @update:modelValue="onModelValueUpdate"
-  @end="onDragEnd"
-  class="grid-two-col"
-  ghost-class="drag-ghost"
-  handle=".drag-handle"
-  :animation="200"
->
-  <template #item="{ element }">
-    <div class="card" :class="{ 'span-2': element?.span2 }" v-show="visibility[element.id] !== false">
-      <div class="card-bar">
-        <span class="drag-handle" title="ลากเพื่อย้าย">⠿</span>
-
-        <!-- Toggle visibility per widget -->
-        <button
-          class="icon-btn eye-toggle"
-          :aria-pressed="visibility[element.id] !== false"
-          :title="visibility[element.id] === false ? 'Show widget' : 'Hide widget'"
-          @click.stop="visibility[element.id] = !visibility[element.id]"
+    <draggable
+      v-model="widgets"
+      item-key="id"
+      @start="isDragging = true"
+      @end="onDragEnd"
+      class="grid-two-col"
+      ghost-class="drag-ghost"
+      handle=".drag-handle"
+      :animation="200"
+    >
+      <template #item="{ element }">
+        <div
+          class="card"
+          :class="{ 'span-2': element?.span2 }"
+          v-show="visibility[element.id] !== false"
         >
-          <svg v-if="visibility[element.id] !== false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.77 21.77 0 0 1 5.18-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.7 21.7 0 0 1-3.23 4.31" />
-            <path d="M14.12 9.88a3 3 0 1 1-4.24 4.24M1 1l22 22" />
-          </svg>
-        </button>
-      </div>
+          <div class="card-bar">
+            <span class="drag-handle" title="ลากเพื่อย้าย">⠿</span>
 
-      <component
-        :is="element.comp"
-        v-bind="element.binds()"
-        v-on="element.on || {}"
-      />
-      <div v-if="!element.comp" class="text-sm" style="color: #6b7280">
-        Component not found
-      </div>
-    </div>
-  </template>
-</draggable>
+            <button
+              class="icon-btn eye-toggle"
+              :aria-pressed="visibility[element.id] !== false"
+              :title="
+                visibility[element.id] === false ? 'Show widget' : 'Hide widget'
+              "
+              @click.stop="visibility[element.id] = !visibility[element.id]"
+            >
+              <!-- ... existing SVG icons ... -->
+              👁️
+            </button>
+          </div>
 
+          <!-- ✅ เพิ่ม :key เพื่อป้องกัน re-render ที่ไม่จำเป็น -->
+          <component
+            :key="`${element.id}-${visibility[element.id]}`"
+            :is="element.comp"
+            v-bind="element.binds()"
+            v-on="element.on()"
+          />
+        </div>
+      </template>
+    </draggable>
     <aside
       class="customize-panel"
       :class="{ open: panelOpen }"
@@ -714,14 +1098,16 @@ function hideAll() {
           </label>
         </li>
       </ul>
-      <p class="cp-hint">การตั้งค่านี้จะอยู่แค่ในหน้านี้ (ไม่บันทึกถาวร)</p>
+      <!-- <p class="cp-hint">การตั้งค่านี้จะอยู่แค่ในหน้านี้ (ไม่บันทึกถาวร)</p> -->
     </aside>
     <div
       class="customize-backdrop"
       :class="{ show: panelOpen }"
       @click="panelOpen = false"
     ></div>
-    <p class="cp-hint">การตั้งค่านี้จะถูกบันทึกถาวร (การตั้งค่าใหม่จะถูกเก็บไว้ในระบบ)</p>
+    <p class="cp-hint">
+      <!-- การตั้งค่านี้จะถูกบันทึกถาวร (การตั้งค่าใหม่จะถูกเก็บไว้ในระบบ) -->
+    </p>
   </div>
 </template>
 
@@ -985,16 +1371,39 @@ function hideAll() {
 
 /* Customize button */
 .btn-customize {
-  padding: 8px 12px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  border-radius: 8px;
+  padding: 10px 20px;
+  border: 2px solid #3b82f6;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-radius: 12px;
   cursor: pointer;
-  transition: transform 0.06s ease;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2),
+              0 2px 4px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
   margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
 }
+
+/* เอฟเฟกต์เมื่อ hover */
+.btn-customize:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3),
+              0 4px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border-color: #2563eb;
+}
+
+/* เอฟเฟกต์เมื่อกด */
 .btn-customize:active {
-  transform: scale(0.98);
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
 /* Slide-over panel */
@@ -1034,11 +1443,31 @@ function hideAll() {
   margin-bottom: 8px;
 }
 .cp-close {
-  border: none;
-  background: #f3f4f6;
-  border-radius: 8px;
-  padding: 6px 10px;
+  padding: 10px 20px;
+  border: 2px solid #3b82f6;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-radius: 12px;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2),
+              0 2px 4px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.cp-close:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3),
+              0 4px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border-color: #2563eb;
 }
 .cp-actions {
   display: flex;
@@ -1046,11 +1475,31 @@ function hideAll() {
   margin: 8px 0 12px;
 }
 .cp-btn {
-  padding: 6px 10px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  border-radius: 8px;
+  padding: 10px 20px;
+  border: 2px solid #3b82f6;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-radius: 12px;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2),
+              0 2px 4px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.cp-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3),
+              0 4px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border-color: #2563eb;
 }
 .cp-list {
   list-style: none;

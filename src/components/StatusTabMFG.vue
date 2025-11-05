@@ -45,9 +45,10 @@ export default {
     }
   },
   methods: {
-    async fetchGateEntryData() {
+    async fetchFaceEntryData() {
       try {
-        const response = await axios.get('http://localhost:5000/api/GateEntry', {
+        // const response = await axios.get('http://localhost:5000/api/GateEntry', {
+                const response = await axios.get('http://localhost:5000/api/Transactions/GetFaceEntry', {
           params: {
             division: this.filters.division !== 'ALL' ? this.filters.division : undefined,
             department: this.filters.department !== 'ALL' ? this.filters.department : undefined,
@@ -133,7 +134,7 @@ export default {
     },
 
     async refreshAll() {
-      await this.fetchGateEntryData();
+      await this.fetchFaceEntryData();
       this.checkShiftAlert();
     },
   },

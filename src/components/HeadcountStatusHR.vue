@@ -8,12 +8,37 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['filter-status']);
-const headcountData = ref([]);
+// const headcountData = ref([]);
+const attendanceData = ref([]);
+const transactionsData = ref([]);
 const isLoading = ref(false);
+const chartRendered = ref(false); // ✅ เพิ่ม flag
 
 // ✅ ดึงข้อมูล headcount จาก API พร้อม filter
-const fetchHeadcountData = async () => {
-  isLoading.value = true;
+// const fetchHeadcountData = async () => {
+//   isLoading.value = true;
+//   try {
+//     const response = await axios.get('http://localhost:5000/api/Attendance/ByDate', {
+//       params: {
+//         division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
+//         department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
+//         section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
+//         biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
+//         process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
+//       },
+//     });
+
+//     headcountData.value = response.data;  // ใช้ข้อมูลจาก Attendance
+//   } catch (error) {
+//     console.error('Error fetching headcount data:', error);
+//   } finally {
+//     isLoading.value = false;
+//     await nextTick(); // ✅ รอ DOM พร้อม
+//     drawChart();
+//   } // <-- ปิดปีกกาให้ถูกต้อง
+// };
+
+const fetchAttendanceData = async () => {
   try {
     const response = await axios.get('http://localhost:5000/api/Attendance/ByDate', {
       params: {
@@ -24,36 +49,100 @@ const fetchHeadcountData = async () => {
         process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
       },
     });
-
-    headcountData.value = response.data;  // ใช้ข้อมูลจาก Attendance
+    attendanceData.value = response.data;
   } catch (error) {
-    console.error('Error fetching headcount data:', error);
+    console.error('Error fetching attendance data:', error);
+  }
+};
+
+const fetchTransactionsData = async () => {
+  try {
+    const response = await axios.get('http://localhost:5000/api/Transactions/GetFaceEntry', {
+      params: {
+        division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
+        department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
+        section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
+        biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
+        process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
+      },
+    });
+    transactionsData.value = response.data;
+  } catch (error) {
+    console.error('Error fetching transactions data:', error);
+  }
+};
+
+// ✅ ดึงข้อมูลทั้งหมด
+const fetchHeadcountData = async () => {
+  isLoading.value = true;
+  try {
+    await Promise.all([fetchAttendanceData(), fetchTransactionsData()]);
   } finally {
     isLoading.value = false;
-    await nextTick(); // ✅ รอ DOM พร้อม
+    await nextTick();
     drawChart();
-  } // <-- ปิดปีกกาให้ถูกต้อง
+  }
 };
 
 // ✅ ฟังก์ชันวาดกราฟ Pie Chart
-const drawChart = () => {
-  if (!headcountData.value.length) return;
+// const drawChart = () => {
+//   if (!headcountData.value.length) return;
 
-  const statusCounts = headcountData.value.reduce(
-    (acc, entry) => {
-      acc[entry.status] = (acc[entry.status] || 0) + 1;
-      return acc;
-    },
-    { 'normal': 0, 'late': 0, 'Missing': 0 }
-  );
+//   const statusCounts = headcountData.value.reduce(
+//     (acc, entry) => {
+//       acc[entry.status] = (acc[entry.status] || 0) + 1;
+//       return acc;
+//     },
+//     { 'normal': 0, 'late': 0, 'Missing': 0 }
+//   );
+
+//   const data = [{
+//     labels: ['Normal', 'Late', 'Missing'],
+//     values: [
+//       statusCounts['normal'],
+//       statusCounts['late'],
+//       statusCounts['Missing'],
+//     ],
+//     type: 'pie',
+//     marker: {
+//       colors: ['#2ECC71', '#F39C12', '#E74C3C'],
+//     },
+//     textinfo: 'label+percent',
+//     hoverinfo: 'label+value+percent',
+//   }];
+
+//   const layout = {
+//     title: 'Headcount Status',
+//     height: 500,
+//     width: 500,
+//   };
+
+//   Plotly.newPlot('headcount-pie-chart', data, layout);
+
+//   const chart = document.getElementById('headcount-pie-chart');
+//   chart.on('plotly_click', (data) => {
+//     const clickedLabel = data.points[0].label;
+//     console.log('Clicked Label:', clickedLabel); // ตรวจสอบค่าที่คลิก
+//     const labelToStatus = {
+//       'Normal': 'normal',
+//       'Late': 'late',
+//       'Missing': 'Missing',
+//     };
+//     emit('filter-status', labelToStatus[clickedLabel]); // ส่งค่ากลับไปที่ตาราง
+//   });
+// };
+
+const drawChart = () => {
+  // นับ Normal และ Late จาก Attendance
+  const normalCount = attendanceData.value.filter(e => e.status === 'normal').length;
+  const lateCount = attendanceData.value.filter(e => e.status === 'late').length;
+  
+  // นับ Missing จาก Transactions
+  const missingCount = transactionsData.value.filter(e => e.status === 'status-missing').length;
 
   const data = [{
     labels: ['Normal', 'Late', 'Missing'],
-    values: [
-      statusCounts['normal'],
-      statusCounts['late'],
-      statusCounts['Missing'],
-    ],
+    values: [normalCount, lateCount, missingCount],
     type: 'pie',
     marker: {
       colors: ['#2ECC71', '#F39C12', '#E74C3C'],
@@ -73,16 +162,28 @@ const drawChart = () => {
   const chart = document.getElementById('headcount-pie-chart');
   chart.on('plotly_click', (data) => {
     const clickedLabel = data.points[0].label;
-    console.log('Clicked Label:', clickedLabel); // ตรวจสอบค่าที่คลิก
+    // console.log('Clicked Label:', clickedLabel);
     const labelToStatus = {
       'Normal': 'normal',
       'Late': 'late',
-      'Missing': 'Missing',
+      'Missing': 'status-missing',
     };
-    emit('filter-status', labelToStatus[clickedLabel]); // ส่งค่ากลับไปที่ตาราง
+    emit('filter-status', labelToStatus[clickedLabel]);
   });
 };
 
+let fetchTimeout = null;
+watch(
+  () => props.filters,
+  async () => {
+    clearTimeout(fetchTimeout);
+    fetchTimeout = setTimeout(async () => {
+      chartRendered.value = false;
+      await fetchHeadcountData();
+    }, 300); // ✅ รอ 300ms ก่อนเรียก API
+  },
+  { deep: true }
+);
 
 // ✅ ดูค่าจาก filter ถ้ามีการเปลี่ยนแปลง -> reload ข้อมูลใหม่
 watch(() => props.filters, async () => {

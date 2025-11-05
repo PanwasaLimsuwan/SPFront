@@ -1,12 +1,12 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
-import Plotly from 'plotly.js';
+import { ref, onMounted, watch, nextTick } from "vue";
+import Plotly from "plotly.js";
 
-const emit = defineEmits(['filter-skills']);
+const emit = defineEmits(["filter-skills"]);
 
 // ✅ รับ props filters
 const props = defineProps({
-  filters: Object
+  filters: Object,
 });
 
 const months = ref([]);
@@ -16,12 +16,22 @@ const needTrainingCounts = ref([]);
 // ✅ ฟังก์ชัน fetch data พร้อม filter
 const fetchSkillData = async () => {
   try {
-    const response = await fetch(`http://localhost:5000/api/Skill?division=${props.filters.division !== 'ALL' ? props.filters.division : ''}&department=${props.filters.department !== 'ALL' ? props.filters.department : ''}&section=${props.filters.section !== 'ALL' ? props.filters.section : ''}&biz=${props.filters.biz !== 'ALL' ? props.filters.biz : ''}&process=${props.filters.process !== 'ALL' ? props.filters.process : ''}`);
+    const response = await fetch(
+      `http://localhost:5000/api/Skill?division=${
+        props.filters.division !== "ALL" ? props.filters.division : ""
+      }&department=${
+        props.filters.department !== "ALL" ? props.filters.department : ""
+      }&section=${
+        props.filters.section !== "ALL" ? props.filters.section : ""
+      }&biz=${props.filters.biz !== "ALL" ? props.filters.biz : ""}&process=${
+        props.filters.process !== "ALL" ? props.filters.process : ""
+      }`
+    );
     const data = await response.json();
 
     const skillCategories = {
-      'Fully Skilled': 0,
-      'Need Training': 0,
+      "Fully Skilled": 0,
+      "Need Training": 0,
     };
 
     data.forEach((employee) => {
@@ -34,57 +44,63 @@ const fetchSkillData = async () => {
         employee.inspection === 3;
 
       if (isFullySkilled) {
-        skillCategories['Fully Skilled']++;
+        skillCategories["Fully Skilled"]++;
       } else {
-        skillCategories['Need Training']++;
+        skillCategories["Need Training"]++;
       }
     });
 
     months.value = Object.keys(skillCategories);
-    fullySkilledCounts.value = [skillCategories['Fully Skilled']];
-    needTrainingCounts.value = [skillCategories['Need Training']];
+    fullySkilledCounts.value = [skillCategories["Fully Skilled"]];
+    needTrainingCounts.value = [skillCategories["Need Training"]];
 
     const trace = {
-      labels: ['Fully Skilled', 'Need Training'],
-      values: [skillCategories['Fully Skilled'], skillCategories['Need Training']],
-      type: 'pie',
-      name: 'Skill Level',
+      labels: ["Fully Skilled", "Need Training"],
+      values: [
+        skillCategories["Fully Skilled"],
+        skillCategories["Need Training"],
+      ],
+      type: "pie",
+      name: "Skill Level",
       marker: {
-        colors: ['rgb(0, 204, 0)', 'rgb(255, 99, 132)'],
+        colors: ["rgb(0, 204, 0)", "rgb(255, 99, 132)"],
       },
-      textinfo: 'label+percent',
-      hoverinfo: 'label+value+percent',
+      textinfo: "label+percent",
+      hoverinfo: "label+value+percent",
     };
 
     const layout = {
-      title: 'Skill Level Distribution: Fully Skilled vs Need Training',
+      title: "Skill Level Distribution: Fully Skilled vs Need Training",
       height: 450,
       width: 450,
       showlegend: true,
     };
 
     await nextTick();
-    Plotly.newPlot('fully-skilled-pie-chart', [trace], layout);
+    Plotly.newPlot("fully-skilled-pie-chart", [trace], layout);
 
-    const chart = document.getElementById('fully-skilled-pie-chart');
-    chart.on('plotly_click', (data) => {
+    const chart = document.getElementById("fully-skilled-pie-chart");
+    chart.on("plotly_click", (data) => {
       const clickedLabel = data.points[0].label;
-      if (clickedLabel === 'Fully Skilled') {
-        emit('filter-skills', 3); // Fully Skilled = ทุกสกิลระดับ 3
-      } else if (clickedLabel === 'Need Training') {
-        emit('filter-skills', 0); // Need Training = มีสกิลต่ำกว่า 3
+      if (clickedLabel === "Fully Skilled") {
+        emit("filter-skills", 3); // Fully Skilled = ทุกสกิลระดับ 3
+      } else if (clickedLabel === "Need Training") {
+        emit("filter-skills", 0); // Need Training = มีสกิลต่ำกว่า 3
       }
     });
-
   } catch (error) {
-    console.error('Error fetching skill data:', error);
+    console.error("Error fetching skill data:", error);
   }
 };
 
 // ✅ ดู filter ถ้าเปลี่ยน -> reload
-watch(() => props.filters, async () => {
-  await fetchSkillData();
-}, { deep: true });
+watch(
+  () => props.filters,
+  async () => {
+    await fetchSkillData();
+  },
+  { deep: true }
+);
 
 // ✅ เริ่มต้น component
 onMounted(() => {

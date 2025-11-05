@@ -1,12 +1,12 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
-import axios from 'axios';
+import { ref, onMounted, computed, watch } from "vue";
+import axios from "axios";
 
 const props = defineProps({
   filterStatus: String,
-  filters: Object
+  filters: Object,
 });
-const emit = defineEmits(['clear-status']);
+const emit = defineEmits(["clear-status"]);
 
 const employees = ref([]);
 const isLoading = ref(false);
@@ -17,70 +17,106 @@ const fetchEmployees = async () => {
   try {
     // ดึงข้อมูลจาก GateEntry
     // const gateEntryResponse = await axios.get('https://deploymanpowerdb-f5a0h6fqaehdajck.southeastasia-01.azurewebsites.net/api/GateEntry', {
-    const gateEntryResponse = await axios.get('http://localhost:5000/api/GateEntry', {
-      params: {
-        division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
-        department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
-        section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
-        biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
-        process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
-      },
-    });
-    
+    // const gateEntryResponse = await axios.get('http://localhost:5000/api/GateEntry', {
+    const transactionsResponse = await axios.get(
+      "http://localhost:5000/api/Transactions/GetFaceEntry",
+      {
+        params: {
+          division:
+            props.filters.division !== "ALL"
+              ? props.filters.division
+              : undefined,
+          department:
+            props.filters.department !== "ALL"
+              ? props.filters.department
+              : undefined,
+          section:
+            props.filters.section !== "ALL" ? props.filters.section : undefined,
+          biz: props.filters.biz !== "ALL" ? props.filters.biz : undefined,
+          process:
+            props.filters.process !== "ALL" ? props.filters.process : undefined,
+        },
+      }
+    );
+
     // ดึงข้อมูลจาก Attendance
-    const attendanceResponse = await axios.get('http://localhost:5000/api/Attendance/ByDate', {
-      params: {
-        division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
-        department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
-        section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
-        biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
-        process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
-      },
-    });
-    
+    // const attendanceResponse = await axios.get('http://localhost:5000/api/Attendance/ByDate', {
+    //   params: {
+    //     division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
+    //     department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
+    //     section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
+    //     biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
+    //     process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
+    //   },
+    // });
+
     // แสดงผลจาก GateEntry
-    const gateEntryData = gateEntryResponse.data;
-    const attendanceData = attendanceResponse.data;
+    // const gateEntryData = gateEntryResponse.data;
+    const transactionsData = transactionsResponse.data;
+    console.log("✅ Data received:", transactionsData.length, "employees");
+
+    // ✅ ใช้ข้อมูลจาก API โดยตรง (API จัดการ status ให้หมดแล้ว)
+    employees.value = transactionsData;
+    // const attendanceData = attendanceResponse.data;
 
     // กรองพนักงานที่มีสถานะ "Missing" จาก Attendance
-    const missingEmployeeIDs = new Set(attendanceData.filter(att => att.status === 'Missing').map(att => att.empID));
+    // const missingEmployeeIDs = new Set(attendanceData.filter(att => att.status === 'Missing').map(att => att.empID));
 
     // แสดงผลพนักงานทั้งหมดจาก GateEntry และกำหนดสถานะ "Missing" สำหรับพนักงานที่มีสถานะ "Missing"
-    employees.value = gateEntryData.map(entry => {
-      if (missingEmployeeIDs.has(entry.empID)) {
-        entry.status = 'status-missing'; // เปลี่ยนสถานะเป็น 'status-missing' สำหรับพนักงานที่มีสถานะ 'Missing'
-      }
-      return entry;
-    });
-
-     
-
+    // employees.value = gateEntryData.map(entry => {
+    // employees.value = transactionsData.map(entry => {
+    //   if (missingEmployeeIDs.has(entry.empID)) {
+    //     entry.status = 'status-missing'; // เปลี่ยนสถานะเป็น 'status-missing' สำหรับพนักงานที่มีสถานะ 'Missing'
+    //   }
+    //   return entry;
+    // });
   } catch (error) {
-    console.error('Error fetching data:', error);
+    console.error("Error fetching data:", error);
   } finally {
     isLoading.value = false;
   }
 };
 
-
 // ✅ watch filters แล้ว refetch และ reset filterStatus
-watch(() => props.filters, () => {
-  fetchEmployees();
-  emit('clear-status');
-}, { deep: true });
+watch(
+  () => props.filters,
+  () => {
+    fetchEmployees();
+    emit("clear-status");
+  },
+  { deep: true }
+);
+
+// ✅ watch filterStatus เพื่อ log การเปลี่ยนแปลง
+watch(
+  () => props.filterStatus,
+  (newStatus, oldStatus) => {
+    console.log("🔍 [EmployeeTable] Filter status changed:", {
+      old: oldStatus,
+      new: newStatus,
+    });
+  }
+);
 
 // ✅ filter ตาม status ที่กด Pie chart
 const filteredEmployees = computed(() => {
-  if (!props.filterStatus) return employees.value;
-  return employees.value.filter(e => e.status === props.filterStatus);
+  if (!props.filterStatus) {
+    console.log('📊 [EmployeeTable] Showing all employees:', employees.value.length);
+    return employees.value;
+  }
+  
+  const filtered = employees.value.filter(e => e.status === props.filterStatus);
+  console.log(`📊 [EmployeeTable] Filtered by ${props.filterStatus}:`, filtered.length, 'employees');
+  return filtered;
 });
 
 // ✅ sorted ให้เรียง status ตามลำดับ
 const sortedEmployees = computed(() => {
   const rank = {
-    'status-missing': 0,
-    'status-out-cleanroom': 1,
-    'status-in-cleanroom': 2,
+    "status-missing": 0,
+    "status-out-cleanroom": 1,
+    "status-in-cleanroom": 2,
+    "status-get-off": 3,
   };
 
   return [...filteredEmployees.value].sort((a, b) => {
@@ -92,27 +128,33 @@ const sortedEmployees = computed(() => {
 
 // ✅ reset filterStatus
 const resetFilter = () => {
-  emit('clear-status');
+  console.log("🔄 [EmployeeTable] Resetting filter");
+  emit("clear-status");
+  fetchEmployees();
 };
 
 // ✅ class status
 const getStatusClass = (status) => {
-  return {
-    'status-in-cleanroom': 'status-in-cleanroom',
-    'status-out-cleanroom': 'status-out-cleanroom',
-    'status-missing': 'status-missing',
-    'status-get-off': 'status-get-off',
-  }[status] || '';
+  return (
+    {
+      "status-in-cleanroom": "status-in-cleanroom",
+      "status-out-cleanroom": "status-out-cleanroom",
+      "status-missing": "status-missing",
+      "status-get-off": "status-get-off",
+    }[status] || ""
+  );
 };
 
 // ✅ label status
 const getStatusLabel = (status) => {
-  return {
-    'status-in-cleanroom': 'In Cleanroom',
-    'status-out-cleanroom': 'Out Cleanroom',
-    'status-missing': 'Missing',
-    'status-get-off': 'Get Off',
-  }[status] || status;
+  return (
+    {
+      "status-in-cleanroom": "In Cleanroom",
+      "status-out-cleanroom": "Out Cleanroom",
+      "status-missing": "Missing",
+      "status-get-off": "Get Off",
+    }[status] || status
+  );
 };
 
 onMounted(() => {
@@ -125,7 +167,11 @@ onMounted(() => {
     <div v-if="isLoading" class="loading">Loading employee data...</div>
     <div v-else class="table-scroll">
       <h3>Head Count</h3>
-      <button class="refresh-skill-btn" @click="resetFilter" title="รีเซตฟิลเตอร์">
+      <button
+        class="refresh-skill-btn"
+        @click="resetFilter"
+        title="รีเซตฟิลเตอร์"
+      >
         <img src="refresh.png" alt="Refresh Icon" class="icon" />
         <span>Refresh</span>
       </button>
@@ -137,7 +183,7 @@ onMounted(() => {
             <th>Lastname</th>
             <th class="datetime-column">Check in time</th>
             <th class="datetime-column">Check out time</th>
-            <th>Gate No</th>
+            <!--  <th>Gate No</th> -->
             <!-- <th>Process</th> -->
             <!-- <th>CourseGroup</th>
             <th>WorkGroup</th> -->
@@ -149,9 +195,9 @@ onMounted(() => {
             <td>{{ employee.empID }}</td>
             <td>{{ employee.firstName }}</td>
             <td>{{ employee.lastName }}</td>
-            <td class="datetime-column">{{ employee.entryDateTime || '-' }}</td>
-            <td class="datetime-column">{{ employee.exitDateTime || '-' }}</td>
-            <td>{{ employee.gateNo || '-' }}</td>
+            <td class="datetime-column">{{ employee.entryDateTime || "-" }}</td>
+            <td class="datetime-column">{{ employee.exitDateTime || "-" }}</td>
+            <!--  <td>{{ employee.gateNo || '-' }}</td> -->
             <!-- <td>{{ employee.process || '-' }}</td>
             <td>{{ employee.courseGroup || '-' }}</td>
             <td>{{ employee.workGroup || '-' }}</td> -->
@@ -171,7 +217,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   /* background-color: tomato; */
-  background-color: #007BFF;
+  background-color: #007bff;
   color: white;
   border: none;
   border-radius: 25px;

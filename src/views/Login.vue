@@ -116,19 +116,25 @@ async function onSubmit() {
 
     setToken(token);
 
-    // ✅ ตรวจสอบ role ที่ได้รับจาก API response
+    // ✅ ตรวจสอบ role และจำกัดการเข้าถึง
     if (role === "Admin") {
       router.push("/dashboard-admin");
+    } else if (role === "LeaderMFG") {
+      router.push("/dashboard-mfg"); // ✅ ไปยัง Dashboard MFG เท่านั้น
+    } else if (role === "LeaderHR") {
+      router.push("/dashboard-hr"); // ✅ ไปยัง Dashboard HR เท่านั้น
     } else if (role === "Leader") {
-      router.push("/dashboard");
-    } 
+      // กรณีที่เป็น Leader แบบเดิม (ถ้ามี) ให้ไปหน้า Home
+      router.push("/home-dashboard");
+    } else {
+      error.value = "Invalid role. Please contact administrator.";
+    }
   } catch (e) {
     error.value = e?.response?.data?.message || e?.message || "เข้าสู่ระบบไม่สำเร็จ";
   } finally {
     loading.value = false;
   }
-}
-</script>
+}</script>
 
 
 <style scoped>

@@ -25,7 +25,8 @@ watch(selectedGroup, drawChart);
 
 async function fetchData() {
   try {
-    const res = await axios.get('http://localhost:5000/api/GateEntry');
+    // const res = await axios.get('http://localhost:5000/api/GateEntry');
+        const res = await axios.get('http://localhost:5000/api/Transactions/GetFaceEntry');
     employees.value = res.data;
     drawChart();
   } catch (err) {

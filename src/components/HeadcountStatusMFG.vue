@@ -1,32 +1,45 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
-import axios from 'axios';
-import Plotly from 'plotly.js';
+import { ref, onMounted, watch, nextTick } from "vue";
+import axios from "axios";
+import Plotly from "plotly.js";
 
 const props = defineProps({
-  filters: Object
+  filters: Object,
 });
 
-const emit = defineEmits(['filter-status']);
+const emit = defineEmits(["filter-status"]);
 const headcountData = ref([]);
 const isLoading = ref(false);
+const chartRendered = ref(false); // ✅ เพิ่ม flag
 
 // ✅ ดึงข้อมูล headcount จาก API พร้อม filter
 const fetchHeadcountData = async () => {
   isLoading.value = true;
   try {
-    const response = await axios.get('http://localhost:5000/api/GateEntry', {
-      params: {
-        division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
-        department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
-        section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
-        biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
-        process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
-      },
-    });
+    // const response = await axios.get('http://localhost:5000/api/GateEntry', {
+    const response = await axios.get(
+      "http://localhost:5000/api/Transactions/GetFaceEntry",
+      {
+        params: {
+          division:
+            props.filters.division !== "ALL"
+              ? props.filters.division
+              : undefined,
+          department:
+            props.filters.department !== "ALL"
+              ? props.filters.department
+              : undefined,
+          section:
+            props.filters.section !== "ALL" ? props.filters.section : undefined,
+          biz: props.filters.biz !== "ALL" ? props.filters.biz : undefined,
+          process:
+            props.filters.process !== "ALL" ? props.filters.process : undefined,
+        },
+      }
+    );
     headcountData.value = response.data;
   } catch (error) {
-    console.error('Error fetching headcount data:', error);
+    console.error("Error fetching headcount data:", error);
   } finally {
     isLoading.value = false;
     await nextTick(); // ✅ รอ DOM พร้อม
@@ -36,6 +49,13 @@ const fetchHeadcountData = async () => {
 
 // ✅ ฟังก์ชันวาดกราฟ Pie Chart
 const drawChart = () => {
+  const chartElement = document.getElementById("headcount-pie-chart");
+
+  if (!chartElement) {
+    console.warn("Chart element not found, skipping render");
+    return; // ✅ หยุดถ้ายังไม่มี element
+  }
+
   if (!headcountData.value.length) return;
 
   const statusCounts = headcountData.value.reduce(
@@ -43,62 +63,108 @@ const drawChart = () => {
       acc[entry.status] = (acc[entry.status] || 0) + 1;
       return acc;
     },
-    { 'status-in-cleanroom': 0, 'status-out-cleanroom': 0, 'status-missing': 0 }
+    { "status-in-cleanroom": 0, "status-out-cleanroom": 0, "status-missing": 0 }
   );
 
-  const data = [{
-    labels: ['In Cleanroom', 'Out Cleanroom', 'Missing'],
-    values: [
-      statusCounts['status-in-cleanroom'],
-      statusCounts['status-out-cleanroom'],
-      statusCounts['status-missing'],
-    ],
-    type: 'pie',
-    marker: {
-      colors: ['#2ECC71', '#F39C12', '#E74C3C'],
+  const data = [
+    {
+      labels: ["In Cleanroom", "Out Cleanroom", "Missing"],
+      values: [
+        statusCounts["status-in-cleanroom"],
+        statusCounts["status-out-cleanroom"],
+        statusCounts["status-missing"],
+      ],
+      type: "pie",
+      marker: {
+        colors: ["#2ECC71", "#F39C12", "#E74C3C"],
+      },
+      textinfo: "label+percent",
+      hoverinfo: "label+value+percent",
     },
-    textinfo: 'label+percent',
-    hoverinfo: 'label+value+percent',
-  }];
+  ];
 
   const layout = {
-    title: 'Headcount Status',
+    title: "Headcount Status",
     height: 500,
     width: 500,
   };
 
-  Plotly.newPlot('headcount-pie-chart', data, layout);
+  Plotly.newPlot("headcount-pie-chart", data, layout);
 
-  const chart = document.getElementById('headcount-pie-chart');
-  chart.on('plotly_click', (data) => {
+  // ✅ เพิ่ม event listener สำหรับการคลิก
+  const chart = document.getElementById("headcount-pie-chart");
+
+  // ลบ listener เก่าก่อน (ถ้ามี)
+  chart.removeAllListeners("plotly_click");
+
+  chart.on("plotly_click", (data) => {
     const clickedLabel = data.points[0].label;
+    console.log("🖱️ [HeadcountStatus] Clicked on:", clickedLabel);
+
     const labelToStatus = {
-      'In Cleanroom': 'status-in-cleanroom',
-      'Out Cleanroom': 'status-out-cleanroom',
-      'Missing': 'status-missing',
+      "In Cleanroom": "status-in-cleanroom",
+      "Out Cleanroom": "status-out-cleanroom",
+      Missing: "status-missing",
     };
-    emit('filter-status', labelToStatus[clickedLabel]);
+
+    const status = labelToStatus[clickedLabel];
+    console.log("📤 [HeadcountStatus] Emitting filter-status:", status);
+    emit("filter-status", status);
   });
 };
 
+//   const chart = document.getElementById('headcount-pie-chart');
+//   chart.on('plotly_click', (data) => {
+//     const clickedLabel = data.points[0].label;
+//     const labelToStatus = {
+//       'In Cleanroom': 'status-in-cleanroom',
+//       'Out Cleanroom': 'status-out-cleanroom',
+//       'Missing': 'status-missing',
+//     };
+//     emit('filter-status', labelToStatus[clickedLabel]);
+//   });
+// };
+
+let fetchTimeout = null;
+watch(
+  () => props.filters,
+  async () => {
+    clearTimeout(fetchTimeout);
+    fetchTimeout = setTimeout(async () => {
+      chartRendered.value = false;
+      await fetchHeadcountData();
+    }, 300); // ✅ รอ 300ms ก่อนเรียก API
+  },
+  { deep: true }
+);
+
 // ✅ ดูค่าจาก filter ถ้ามีการเปลี่ยนแปลง -> reload ข้อมูลใหม่
-watch(() => props.filters, async () => {
-  await fetchHeadcountData();
-}, { deep: true });
+watch(
+  () => props.filters,
+  async () => {
+    await fetchHeadcountData();
+  },
+  { deep: true }
+);
 
 // ✅ เริ่มต้น mount component -> fetch data และวาด chart
 onMounted(async () => {
   await fetchHeadcountData();
-  await nextTick();  // รอให้ DOM โหลดเสร็จ
-  drawChart();  // ฟังก์ชันที่ใช้ Plotly วาดกราฟ
+  await nextTick(); // รอให้ DOM โหลดเสร็จ
+  drawChart(); // ฟังก์ชันที่ใช้ Plotly วาดกราฟ
 });
 </script>
 
 <template>
-  <div class="headcount-pie-chart">
-    <div v-if="isLoading" class="loading">Loading headcount data...</div>
-    <div v-else>
-      <div id="headcount-pie-chart"></div>
+  <div class="headcount-status-container">
+    <h3>Headcount Status</h3>
+    <div 
+      id="headcount-pie-chart" 
+      v-show="chartRendered || headcountData.length > 0"
+    ></div>
+    <!-- ✅ แสดง loading ตอนยังไม่พร้อม -->
+    <div v-if="!chartRendered && headcountData.length === 0" class="loading">
+      Loading chart...
     </div>
   </div>
 </template>

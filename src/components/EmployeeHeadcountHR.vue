@@ -8,12 +8,34 @@ const props = defineProps({
 });
 const emit = defineEmits(['clear-status']);
 
-const employees = ref([]);
+// const employees = ref([]);
+const attendanceData = ref([]);
+const transactionsData = ref([]);
 const isLoading = ref(false);
 
 // ✅ Fetch พร้อมใช้ filters
-const fetchEmployees = async () => {
-  isLoading.value = true;
+// const fetchEmployees = async () => {
+//   isLoading.value = true;
+//   try {
+//     const response = await axios.get('http://localhost:5000/api/Attendance/ByDate', {
+//       params: {
+//         division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
+//         department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
+//         section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
+//         biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
+//         process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
+//       },
+//     });
+//     employees.value = response.data;
+//   } catch (error) {
+//     console.error('Error fetching attendance data:', error);
+//   } finally {
+//     isLoading.value = false;
+//   }
+// };
+
+// ✅ ดึงข้อมูลจาก Attendance (Normal, Late)
+const fetchAttendanceData = async () => {
   try {
     const response = await axios.get('http://localhost:5000/api/Attendance/ByDate', {
       params: {
@@ -24,31 +46,80 @@ const fetchEmployees = async () => {
         process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
       },
     });
-    employees.value = response.data;
+    attendanceData.value = response.data;
   } catch (error) {
     console.error('Error fetching attendance data:', error);
+  }
+};
+
+// ✅ ดึงข้อมูลจาก Transactions (Missing)
+const fetchTransactionsData = async () => {
+  try {
+    const response = await axios.get('http://localhost:5000/api/Transactions/GetFaceEntry', {
+      params: {
+        division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
+        department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
+        section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
+        biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
+        process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
+      },
+    });
+    transactionsData.value = response.data;
+  } catch (error) {
+    console.error('Error fetching transactions data:', error);
+  }
+};
+
+// ✅ Fetch ข้อมูลทั้งหมด
+const fetchEmployees = async () => {
+  isLoading.value = true;
+  try {
+    await Promise.all([fetchAttendanceData(), fetchTransactionsData()]);
+  } catch (error) {
+    console.error('Error fetching employee data:', error);
   } finally {
     isLoading.value = false;
   }
 };
 
-// ✅ watch filters แล้ว refetch และ reset filterStatus
+// // ✅ watch filters แล้ว refetch และ reset filterStatus
 watch(() => props.filters, () => {
   fetchEmployees();
   emit('clear-status');
 }, { deep: true });
 
+// ✅ รวมข้อมูลจากทั้ง 2 API
+const allEmployees = computed(() => {
+  // ข้อมูลจาก Attendance (normal, late)
+  const attendanceEmployees = attendanceData.value.filter(
+    e => e.status === 'normal' || e.status === 'late'
+  );
+  
+  // ข้อมูลจาก Transactions (Missing)
+  const missingEmployees = transactionsData.value.filter(
+    e => e.status === 'status-missing'
+  );
+  
+  // รวมข้อมูลทั้งหมด
+  return [...attendanceEmployees, ...missingEmployees];
+});
+
 // ✅ filter ตาม status ที่กด Pie chart
+// const filteredEmployees = computed(() => {
+//   console.log('Filter Status:', props.filterStatus); // ตรวจสอบค่าที่รับมาจากกราฟ
+//   if (!props.filterStatus) return employees.value;
+//   return employees.value.filter(e => e.status.toLowerCase() === props.filterStatus.toLowerCase());  // กรองตาม status
+// });
 const filteredEmployees = computed(() => {
-  console.log('Filter Status:', props.filterStatus); // ตรวจสอบค่าที่รับมาจากกราฟ
-  if (!props.filterStatus) return employees.value;
-  return employees.value.filter(e => e.status.toLowerCase() === props.filterStatus.toLowerCase());  // กรองตาม status
+  // console.log('Filter Status:', props.filterStatus);
+  if (!props.filterStatus) return allEmployees.value;
+  return allEmployees.value.filter(e => e.status.toLowerCase() === props.filterStatus.toLowerCase());
 });
 
 // ✅ sorted ให้เรียง status ตามลำดับ
 const sortedEmployees = computed(() => {
   const rank = {
-    'Missing': 0,
+    'status-missing': 0,
     'late': 1,
     'normal': 2,
   };
@@ -70,7 +141,7 @@ const getStatusClass = (status) => {
   return {
     'normal': 'status-normal',
     'late': 'status-late',
-    'Missing': 'status-missing',
+    'status-missing': 'status-missing',
   }[status] || '';
 };
 
@@ -79,7 +150,7 @@ const getStatusLabel = (status) => {
   return {
     'normal': 'Normal',
     'late': 'Late',
-    'Missing': 'Missing',
+    'status-missing': 'Missing',
   }[status] || status;
 };
 

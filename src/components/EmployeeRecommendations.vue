@@ -277,17 +277,17 @@ const saveAssignment = async () => {
     Status: "Active",
   };
 
-  try {
-    await axios.post("http://localhost:5000/api/Assignment", payload);
+  // try {
+  //   await axios.post("http://localhost:5000/api/Assignment", payload);
 
-    // เก็บไว้ว่า empID นี้มีงานค้างแล้ว → disable ปุ่มทันที
-    activeAssignments.value.push({ empID: selectedEmployee.value.empID });
-    alert("บันทึกข้อมูล Assignment สำเร็จ");
-    closeModal();
-  } catch (error) {
-    console.error("Error creating assignment:", error);
-    alert("บันทึกไม่สำเร็จ:\n" + (error?.response?.data || error.message));
-  }
+  //   // เก็บไว้ว่า empID นี้มีงานค้างแล้ว → disable ปุ่มทันที
+  //   activeAssignments.value.push({ empID: selectedEmployee.value.empID });
+  //   alert("บันทึกข้อมูล Assignment สำเร็จ");
+  //   closeModal();
+  // } catch (error) {
+  //   console.error("Error creating assignment:", error);
+  //   alert("บันทึกไม่สำเร็จ:\n" + (error?.response?.data || error.message));
+  // }
 
   try {
     const response = await axios.post("http://localhost:5000/api/Assignment", payload);

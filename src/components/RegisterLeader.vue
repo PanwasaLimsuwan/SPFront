@@ -10,6 +10,13 @@
           <th>First Name</th>
           <th>Last Name</th>
           <th>Email</th>
+          <th>Division</th>
+          <th>Department</th>
+          <th>Section</th>
+          <th>Biz</th>
+          <th>Process</th>
+          <th>ShiftCode</th>
+          <th>Position</th>
           <th>Action</th>
         </tr>
       </thead>
@@ -19,6 +26,13 @@
           <td>{{ employee.firstName }}</td>
           <td>{{ employee.lastName }}</td>
           <td>{{ employee.email }}</td>
+          <td>{{ employee.division }}</td>
+          <td>{{ employee.department }}</td>
+          <td>{{ employee.section }}</td>
+          <td>{{ employee.biz }}</td>
+          <td>{{ employee.process }}</td>
+          <td>{{ employee.shiftCode }}</td>
+          <td>{{ employee.position }}</td>
           <td>
             <!-- ปุ่ม Register, Edit, Delete -->
             <button 
@@ -55,6 +69,36 @@
           <label>Email:</label>
           <input type="email" v-model="editData.email" required />
 
+          <label>Biz:</label>
+  <input type="text" v-model="editData.biz" required />
+  
+  <label>PlanID:</label>
+  <input type="text" v-model="editData.planID" required />
+
+  <label>Process:</label>
+  <input type="text" v-model="editData.process" required />
+
+  <label>Section:</label>
+  <input type="text" v-model="editData.section" required />
+
+  <label>Division:</label>
+  <input type="text" v-model="editData.division" required />
+
+  <label>JobGrade:</label>
+  <input type="text" v-model="editData.jobGrade" required />
+
+  <label>Position:</label>
+  <input type="text" v-model="editData.position" required />
+
+  <label>ShiftCode:</label>
+  <input type="text" v-model="editData.shiftCode" required />
+
+  <label>CostCenter:</label>
+  <input type="text" v-model="editData.costCenter" required />
+
+  <label>Department:</label>
+  <input type="text" v-model="editData.department" required />
+
           <button type="submit">Save Changes</button>
           <button type="button" @click="closeEditForm">Cancel</button>
         </form>
@@ -76,31 +120,112 @@ const editData = ref({
   lastName: '',
   email: '',
   role: 'Leader',
+  division: '',
+  department: '',
+  section: '',
+  jobGrade: '',
+  position: '',
+  shiftCode: '',
+  costCenter: '',
+  biz: '',
+  process: '',
+  planID: '',
 });
 
 // ฟังก์ชันดึงข้อมูลพนักงานจาก API
-const getSupervisors = async () => {
+// const getSupervisors = async () => {
+//   try {
+//     const response = await axios.get('http://localhost:5000/api/EmployeeInfo/get-supervisors');
+//     if (response.data && response.data.length > 0) {
+//       // ตรวจสอบว่าพนักงานแต่ละคนลงทะเบียนแล้วหรือยัง
+//       employees.value = response.data.map(employee => ({
+//         ...employee,
+//         isRegistered: false // เริ่มต้นให้ไม่มีการลงทะเบียน
+//       }));
+      
+//       // ตรวจสอบการลงทะเบียนใน API
+//       for (const employee of employees.value) {
+//         const isRegisteredResponse = await checkIfRegistered(employee.empID);
+//         employee.isRegistered = isRegisteredResponse.isRegistered;
+//       }
+//     } else {
+//       console.error("No supervisors found or invalid data");
+//     }
+//   } catch (error) {
+//     console.error('Error fetching supervisors', error);
+//   }
+// };
+
+// เปลี่ยนชื่อฟังก์ชันและเพิ่ม Role mapping
+const getLeaders = async () => {
   try {
-    const response = await axios.get('http://localhost:5000/api/EmployeeInfo/get-supervisors');
+    const response = await axios.get('http://localhost:5000/api/EmployeeInfo/get-leaders');
     if (response.data && response.data.length > 0) {
-      // ตรวจสอบว่าพนักงานแต่ละคนลงทะเบียนแล้วหรือยัง
       employees.value = response.data.map(employee => ({
         ...employee,
-        isRegistered: false // เริ่มต้นให้ไม่มีการลงทะเบียน
+        // กำหนด Role ตาม Position
+        role: employee.position === 'Supervisor' ? 'LeaderMFG' : 
+              employee.position === 'Officer' ? 'LeaderHR' : 'Leader',
+        isRegistered: false
       }));
       
-      // ตรวจสอบการลงทะเบียนใน API
+      // ตรวจสอบการลงทะเบียน
       for (const employee of employees.value) {
         const isRegisteredResponse = await checkIfRegistered(employee.empID);
         employee.isRegistered = isRegisteredResponse.isRegistered;
       }
     } else {
-      console.error("No supervisors found or invalid data");
+      console.error("No leaders found or invalid data");
     }
   } catch (error) {
-    console.error('Error fetching supervisors', error);
+    console.error('Error fetching leaders', error);
   }
 };
+
+// ปรับฟังก์ชัน registerLeader ให้ส่ง Role ตาม Position
+const registerLeader = async (employee) => {
+  if (!employee || !employee.empID) {
+    console.error("empID is undefined or invalid!");
+    alert("Invalid employee data.");
+    return;
+  }
+
+  if (!employee.firstName || !employee.lastName || !employee.email) {
+    console.error("Incomplete employee data!");
+    alert("Please complete the employee data.");
+    return;
+  }
+
+  const defaultPassword = generateRandomPassword(12);
+  
+  // กำหนด Role ตาม Position
+  const leaderRole = employee.position === 'Supervisor' ? 'LeaderMFG' : 
+                     employee.position === 'Officer' ? 'LeaderHR' : 'Leader';
+  
+  try {
+    const response = await axios.post('http://localhost:5000/api/admin/register-leader', {
+      EmpID: employee.empID,
+      FirstName: employee.firstName,
+      LastName: employee.lastName,
+      Email: employee.email,
+      PasswordHash: defaultPassword,
+      Role: leaderRole  // ส่ง Role ที่แยกแล้ว
+    });
+    
+    if (response.status === 200) {
+      alert(`Employee registered successfully as ${leaderRole}.`);
+      employee.isRegistered = true;
+    }
+  } catch (error) {
+    console.error("Error during registration:", error);
+    alert('Error during registration.');
+  }
+};
+
+// อย่าลืมเปลี่ยนใน onMounted
+onMounted(() => {
+  getLeaders();  // เปลี่ยนจาก getSupervisors()
+});
 
 const generateRandomPassword = (length = 8) => {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
@@ -141,61 +266,62 @@ const closeEditForm = () => {
 };
 
 // ฟังก์ชันการลงทะเบียนพนักงาน
-const registerLeader = async (employee) => {
-  if (!employee || !employee.empID) {
-    console.error("empID is undefined or invalid!");
-    alert("Invalid employee data.");
-    return;
-  }
+// const registerLeader = async (employee) => {
+//   if (!employee || !employee.empID) {
+//     console.error("empID is undefined or invalid!");
+//     alert("Invalid employee data.");
+//     return;
+//   }
 
-  if (!employee.firstName || !employee.lastName || !employee.email) {
-    console.error("Incomplete employee data!");
-    alert("Please complete the employee data.");
-    return;
-  }
+//   if (!employee.firstName || !employee.lastName || !employee.email) {
+//     console.error("Incomplete employee data!");
+//     alert("Please complete the employee data.");
+//     return;
+//   }
 
-  // const defaultPassword = generateRandomPassword(12);
-  // console.log(`Generated Password: ${defaultPassword}`);
+//   // const defaultPassword = generateRandomPassword(12);
+//   // console.log(`Generated Password: ${defaultPassword}`);
 
-  const defaultPassword = generateRandomPassword(12);
-  try {
-    const response = await axios.post('http://localhost:5000/api/admin/register-leader', {
-      EmpID: employee.empID,
-      FirstName: employee.firstName,
-      LastName: employee.lastName,
-      Email: employee.email,
-      PasswordHash: defaultPassword,
-      Role: "Leader"
-    });
-    if (response.status === 200) {
-      alert('Employee registered successfully.');
-      // getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังจากการลงทะเบียน
-      getRegisteredLeaders();  // ดึงข้อมูลจาก Admin มาแสดง
-    }
-  } catch (error) {
-    console.error("Error during registration:", error);
-    alert('Error during registration.');
-  }
+//   const defaultPassword = generateRandomPassword(12);
+//   try {
+//     const response = await axios.post('http://localhost:5000/api/admin/register-leader', {
+//       EmpID: employee.empID,
+//       FirstName: employee.firstName,
+//       LastName: employee.lastName,
+//       Email: employee.email,
+//       PasswordHash: defaultPassword,
+//       Role: "Leader"
+//     });
+//     if (response.status === 200) {
+//       alert('Employee registered successfully.');
+//       // getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังจากการลงทะเบียน
+//       // getRegisteredLeaders();  // ดึงข้อมูลจาก Admin มาแสดง
 
-  // try {
-  //   const response = await axios.post('http://localhost:5000/api/admin/register-leader', {
-  //     EmpID: employee.empID,
-  //     FirstName: employee.firstName,
-  //     LastName: employee.lastName,
-  //     Email: employee.email,
-  //     PasswordHash: defaultPassword,
-  //     Role: "Leader"
-  //   });
+//     }
+//   } catch (error) {
+//     console.error("Error during registration:", error);
+//     alert('Error during registration.');
+//   }
 
-  //   if (response.status === 200) {
-  //     alert('Employee registered successfully.');
-  //     getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังจากการลงทะเบียน
-  //   }
-  // } catch (error) {
-  //   console.error("Error during registration:", error);
-  //   alert('Error during registration.');
-  // }
-};
+//   // try {
+//   //   const response = await axios.post('http://localhost:5000/api/admin/register-leader', {
+//   //     EmpID: employee.empID,
+//   //     FirstName: employee.firstName,
+//   //     LastName: employee.lastName,
+//   //     Email: employee.email,
+//   //     PasswordHash: defaultPassword,
+//   //     Role: "Leader"
+//   //   });
+
+//   //   if (response.status === 200) {
+//   //     alert('Employee registered successfully.');
+//   //     getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังจากการลงทะเบียน
+//   //   }
+//   // } catch (error) {
+//   //   console.error("Error during registration:", error);
+//   //   alert('Error during registration.');
+//   // }
+// };
 
 const getRegisteredLeaders = async () => {
   try {
@@ -221,7 +347,8 @@ const editEmployee = async (employee) => {
   }
 
   const updatedData = {
-    EmpID: editData.value.empID,  // ส่ง empID ไปด้วยใน body
+    // EmpID: editData.value.empID,  // ส่ง empID ไปด้วยใน body
+    EmpID: parseInt(editData.value.empID),
   };
 
   // ตรวจสอบการเปลี่ยนแปลงของฟิลด์ firstName
@@ -238,6 +365,46 @@ const editEmployee = async (employee) => {
   if (editData.value.email !== employee.email) {
     updatedData.Email = editData.value.email;
   }
+  
+  if (editData.value.division !== employee.division) {
+    updatedData.Division = editData.value.division;
+  }
+
+  if (editData.value.department !== employee.department) {
+    updatedData.Department = editData.value.department;
+  }
+
+  if (editData.value.section !== employee.section) {
+    updatedData.Section = editData.value.section;
+  }
+
+  if (editData.value.jobGrade !== employee.jobGrade) {
+    updatedData.JobGrade = editData.value.jobGrade;
+  }
+
+  if (editData.value.position !== employee.position) {
+    updatedData.Position = editData.value.position;
+  }
+
+  if (editData.value.shiftCode !== employee.shiftCode) {
+    updatedData.ShiftCode = editData.value.shiftCode;
+  }
+
+  if (editData.value.costCenter !== employee.costCenter) {
+    updatedData.CostCenter = editData.value.costCenter;
+  }
+
+  if (editData.value.biz !== employee.biz) {
+    updatedData.Biz = editData.value.biz;
+  }
+
+  if (editData.value.process !== employee.process) {
+    updatedData.Process = editData.value.process;
+  }
+
+  if (editData.value.planID !== employee.planID) {
+    updatedData.PlanId = editData.value.planID;
+  }
 
   // ตรวจสอบว่ามีการเปลี่ยนแปลงใด ๆ หรือไม่
   if (Object.keys(updatedData).length === 1) {  // เช็คเฉพาะการเปลี่ยนแปลง (empID จะอยู่ใน updatedData เสมอ)
@@ -249,25 +416,43 @@ const editEmployee = async (employee) => {
   console.log("Updated data:", updatedData);
 
   try {
-    const response = await axios.put(
-      `http://localhost:5000/api/admin/edit/${updatedData.EmpID}`,  // ใช้ URL ปกติไม่ต้องใส่ empID ใน URL
-      updatedData,  // ส่งข้อมูลทั้งหมดรวมทั้ง empID ใน body
+  // อัปเดตข้อมูลพนักงานใน admin
+  const responseAdmin = await axios.put(
+    `http://localhost:5000/api/admin/edit/${updatedData.EmpID}`, // URL สำหรับการอัปเดตข้อมูลใน admin
+    updatedData,  // ข้อมูลที่ต้องการอัปเดต
+    {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  // ตรวจสอบการตอบกลับจาก API
+  if (responseAdmin.status === 200) {
+    // อัปเดตข้อมูลพนักงานใน EmployeeInfo
+    const responseEmployeeInfo = await axios.put(
+      `http://localhost:5000/api/EmployeeInfo/edit/${updatedData.EmpID}`, // URL สำหรับการอัปเดตข้อมูลใน EmployeeInfo
+      updatedData,  // ข้อมูลที่ต้องการอัปเดต
       {
         headers: {
           'Content-Type': 'application/json',
         },
       }
     );
-    if (response.status === 200) {
+
+    if (responseEmployeeInfo.status === 200) {
       alert("Employee updated successfully.");
-      // getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังจากการแก้ไข
-      getRegisteredLeaders();  // รีเฟรชข้อมูลจาก Admin หลังการแก้ไข
+      // รีเฟรชข้อมูลที่เกี่ยวข้องหลังการแก้ไข
+      // getSupervisors();  // ตัวเลือกสำหรับการรีเฟรชข้อมูล
+      // getRegisteredLeaders();  // ตัวเลือกสำหรับการรีเฟรชข้อมูลจาก Admin
       closeEditForm();  // ปิดฟอร์มแก้ไข
     }
-  } catch (error) {
-    console.error("Error during edit:", error);
-    alert("Error during edit. " + (error.response?.data || error.message));  // แสดงข้อความจากเซิร์ฟเวอร์
   }
+} catch (error) {
+  console.error("Error during edit:", error);
+  alert("Error during edit. " + (error.response?.data || error.message));  // แสดงข้อความจากเซิร์ฟเวอร์
+}
+
 };
 
 // const editEmployee = async (employee) => {
@@ -312,7 +497,8 @@ const deleteEmployee = async (empID) => {
     const response = await axios.delete(`http://localhost:5000/api/admin/delete/${empID}`);
     if (response.status === 200) {
       alert('Employee deleted successfully.');
-      getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังจากการลบ
+      // getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังจากการลบ
+      getLeaders();
     }
   } catch (error) {
     console.error("Error during delete:", error);
@@ -321,7 +507,8 @@ const deleteEmployee = async (empID) => {
 };
 
 onMounted(() => {
-  getSupervisors();
+  // getSupervisors();
+  getLeaders();
 });
 </script>
 
