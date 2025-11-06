@@ -9,7 +9,7 @@ import { useRouter } from "vue-router";
 function doLogout() {
   clearToken(); // ลบ token
   localStorage.removeItem("role"); // ลบ role
-  router.push("/login"); // เปลี่ยนเส้นทางไปหน้าล็อกอิน
+  router.push("/"); // เปลี่ยนเส้นทางไปหน้าล็อกอิน
 }
 
 // ฟังก์ชันตรวจสอบว่า token มีอยู่ใน localStorage หรือไม่

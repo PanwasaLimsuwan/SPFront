@@ -12,7 +12,7 @@ import MFGControl from './components/MFGControl'
 import WidgetManagement from './components/AdminWidgetManagement'
 
 const routes = [
-  { path: "/login", name: "Login", component: Login, meta: { guestOnly: true } },
+  { path: "/", name: "Login", component: Login, meta: { guestOnly: true } },
   { path: '/dashboard', component: HomeDashboard },
   { path: '/dashboard-mfg', component: DashboardMFG },
   { path: '/dashboard-hr', component: DashboardHR },
@@ -51,7 +51,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !localStorage.getItem('token')) {
-    next('/login'); // ถ้าไม่มี token, ไปหน้า login
+    next('/'); // ถ้าไม่มี token, ไปหน้า login
   } else {
     next();
   }

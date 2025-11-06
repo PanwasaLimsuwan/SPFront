@@ -851,7 +851,7 @@ const saveAssignment = () => {
 const handleLogout = async () => {
   await saveWidgetSettings(); // บันทึกการตั้งค่าก่อน logout
   localStorage.removeItem("token");
-  window.location.href = "/login";
+  window.location.href = "/";
 };
 
 const onModelValueUpdate = (newValue) => {
