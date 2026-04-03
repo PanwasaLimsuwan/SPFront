@@ -132,7 +132,9 @@ const drawChart = () => {
     responsive: true,
   };
 
-  Plotly.newPlot("headcount-transition-chart", chartData, layout);
+  Plotly.newPlot("headcount-transition-chart", chartData, layout, {
+  displayModeBar: false
+});
 };
 </script>
 

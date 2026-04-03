@@ -61,7 +61,9 @@ export default {
       };
 
       // 🔹 สร้างกราฟด้วย Plotly
-      Plotly.newPlot("resignation-chart", chartData, layout);
+      Plotly.newPlot("resignation-chart", chartData, layout, {
+  displayModeBar: false
+});
     },
     aggregateResignationsByMonth() {
       const resignationsByMonth = {};

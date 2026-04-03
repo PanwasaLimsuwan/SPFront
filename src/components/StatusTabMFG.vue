@@ -1,16 +1,23 @@
 <template>
   <div class="stat-card" v-for="(card, index) in stats" :key="index">
     <div class="icon-container">
-      <span v-if="card.dotColor" :style="{ backgroundColor: card.dotColor }" class="status-dot"></span>
+      <span
+        v-if="card.dotColor"
+        :style="{ backgroundColor: card.dotColor }"
+        class="status-dot"
+      ></span>
       <img v-else-if="card.icon" :src="card.icon" alt="Icon" class="icon" />
     </div>
+
     <div class="content">
-      <h3 :style="{ color: card.label === 'ต้องการพนักงาน' ? '#ff0000' : '#000' }">
+      <h3
+        :style="{ color: card.label === 'ต้องการพนักงาน' ? '#ff0000' : '#000' }"
+      >
         {{ card.value }}
       </h3>
       <p>{{ card.label }}</p>
       <p v-if="card.subLabel" class="sub-label">{{ card.subLabel }}</p>
-      <!-- ✅ แจ้งเตือนเฉพาะการ์ดนาฬิกา -->
+
       <div v-if="showBell && card.icon === 'clock.png'" class="bell-alert">
         <img src="/bell.png" alt="Notification" class="bell-icon" />
         <span class="bell-text">ถึงเวลาเปลี่ยนกะ!</span>
@@ -20,93 +27,142 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { useToast } from 'vue-toastification';
+import axios from "axios";
+import { useToast } from "vue-toastification";
 
 export default {
   props: {
-    filters: Object // ✅ รับ props filter เข้ามา
+    filters: Object,
   },
+
   data() {
     return {
       employees: [],
+      selectedDate: null,
+      selectedShift: null,
+      currentTime: null,
       showBell: false,
       hasAlerted: false,
       toast: null,
-      stats: []
+      stats: [],
     };
   },
+
   watch: {
     filters: {
       handler() {
-        this.refreshAll(); // ✅ ถ้ามีการเปลี่ยน filter -> refresh ข้อมูล
+        this.refreshAll();
       },
-      deep: true
-    }
+      deep: true,
+    },
   },
+
   methods: {
     async fetchFaceEntryData() {
       try {
-        // const response = await axios.get('http://localhost:5000/api/GateEntry', {
-                const response = await axios.get('http://localhost:5000/api/Transactions/GetFaceEntry', {
-          params: {
-            division: this.filters.division !== 'ALL' ? this.filters.division : undefined,
-            department: this.filters.department !== 'ALL' ? this.filters.department : undefined,
-            section: this.filters.section !== 'ALL' ? this.filters.section : undefined,
-            biz: this.filters.biz !== 'ALL' ? this.filters.biz : undefined,
-            process: this.filters.process !== 'ALL' ? this.filters.process : undefined,
+        const response = await axios.get(
+          "http://localhost:5000/api/Transactions/GetFaceEntry",
+          {
+            params: {
+              division:
+                this.filters.division !== "ALL"
+                  ? this.filters.division
+                  : undefined,
+              department:
+                this.filters.department !== "ALL"
+                  ? this.filters.department
+                  : undefined,
+              section:
+                this.filters.section !== "ALL"
+                  ? this.filters.section
+                  : undefined,
+              biz: this.filters.biz !== "ALL" ? this.filters.biz : undefined,
+              process:
+                this.filters.process !== "ALL"
+                  ? this.filters.process
+                  : undefined,
+
+              // shiftOverride: "B", // 🔵 บังคับกะเช้า
+            },
           }
-        });
-        this.employees = response.data;
+        );
+
+        // ✅ รับข้อมูลจาก backend
+        this.employees = response.data.data;
+        this.selectedDate = response.data.selectedDate || response.data.workDate;
+        this.selectedShift = response.data.shift;
+        this.currentTime = response.data.currentTime;
+
         this.updateStats();
       } catch (error) {
-        console.error("Error fetching data from API:", error);
+        console.error("Error fetching data:", error);
       }
     },
 
     updateStats() {
       const totalEmployees = this.employees.length;
-      const inCleanroom = this.employees.filter(e => e.status === "status-in-cleanroom").length;
-      const outCleanroom = this.employees.filter(e => e.status === "status-out-cleanroom").length;
-      const missing = this.employees.filter(e => e.status === "status-missing").length;
-      const getoff = this.employees.filter(e => e.status === "status-get-off").length;
-      const need = missing;
+      const inCleanroom = this.employees.filter(
+        (e) => e.status === "status-in-cleanroom"
+      ).length;
+      const outCleanroom = this.employees.filter(
+        (e) => e.status === "status-out-cleanroom"
+      ).length;
+      const missing = this.employees.filter(
+        (e) => e.status === "status-missing"
+      ).length;
+      const getoff = this.employees.filter(
+        (e) => e.status === "status-get-off"
+      ).length;
 
-      const currentTime = new Date();
+      // const formattedDate = this.selectedDate
+      //   ? new Date(this.selectedDate).toLocaleDateString("th-TH")
+      //   : "-";
+      const formattedDate = this.selectedDate
+        ? (() => {
+            const [year, month, day] = this.selectedDate.split("-");
+            return `${day}/${month}/${year}`;
+          })()
+        : "-";
 
       this.stats = [
         {
-          value: currentTime.toLocaleTimeString(),
-          label: "SHIFT : ?",
-          subLabel: currentTime.toLocaleDateString('th-TH'),
-          icon: "clock.png"
+          value: `SHIFT : ${this.selectedShift}`,
+          // label: "ข้อมูลกะ",
+          label: `เวลา ${this.currentTime}`,
+          subLabel: formattedDate,
+          icon: "clock.png",
         },
         { value: totalEmployees, label: "พนักงานทั้งหมด", subLabel: "คน" },
-        { value: inCleanroom, label: "In Cleanroom", subLabel: "คน", dotColor: "#00cc66" },
-        { value: outCleanroom, label: "Out Cleanroom", subLabel: "คน", dotColor: "#ffcc00" },
-        { value: missing, label: "ขาดงาน", subLabel: "คน", dotColor: "#ff6666" },
-        { value: getoff, label: "Get Off", subLabel: "คน", dotColor: "#3399ff" },
-        { value: need, label: "ต้องการพนักงาน", subLabel: "คน" }
+        {
+          value: inCleanroom,
+          label: "In Cleanroom",
+          subLabel: "คน",
+          dotColor: "#00cc66",
+        },
+        {
+          value: outCleanroom,
+          label: "Out Cleanroom",
+          subLabel: "คน",
+          dotColor: "#ffcc00",
+        },
+        {
+          value: missing,
+          label: "ขาดงาน",
+          subLabel: "คน",
+          dotColor: "#ff6666",
+        },
+        {
+          value: getoff,
+          label: "Get Off",
+          subLabel: "คน",
+          dotColor: "#3399ff",
+        },
+        // {
+        //   value: missing,
+        //   label: "ต้องการพนักงาน",
+        //   subLabel: "คน",
+        // },
       ];
-
-      this.updateShift(currentTime);
-    },
-
-    updateShift(currentTime) {
-      const hours = currentTime.getHours();
-      const shiftLabel = (hours >= 7 && hours < 19) ? "SHIFT : DAY" : "SHIFT : NIGHT";
-      this.stats[0].label = shiftLabel;
-    },
-
-    startClock() {
-      setInterval(() => {
-        const now = new Date();
-        if (this.stats.length > 0) {
-          this.stats[0].value = now.toLocaleTimeString();
-          this.stats[0].subLabel = now.toLocaleDateString('th-TH');
-          this.updateShift(now);
-        }
-      }, 1000);
     },
 
     checkShiftAlert() {
@@ -126,7 +182,7 @@ export default {
 
         this.toast.warning("ถึงเวลาเปลี่ยนกะ กรุณาแจ้งพนักงาน!", {
           timeout: 5000,
-          position: 'top-right',
+          position: "top-right",
         });
       } else if (!isShiftTime) {
         this.hasAlerted = false;
@@ -142,13 +198,12 @@ export default {
   mounted() {
     this.toast = useToast();
     this.refreshAll();
-    this.startClock();
 
+    // รีเฟรชทุก 10 วิ
     setInterval(() => {
-      this.checkShiftAlert();
       this.refreshAll();
-    }, 10000); // ⏱️ 10 วินาทีพอ ไม่ต้องถี่ 1 วิครับ
-  }
+    }, 10000);
+  },
 };
 </script>
 
@@ -180,9 +235,15 @@ export default {
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .stat-card {
@@ -238,8 +299,16 @@ p {
   color: #888;
 }
 
-.status-in-cleanroom { color: green; }
-.status-out-cleanroom { color: orange; }
-.status-missing { color: red; }
-.stat-get-off { color: blue; }
+.status-in-cleanroom {
+  color: green;
+}
+.status-out-cleanroom {
+  color: orange;
+}
+.status-missing {
+  color: red;
+}
+.stat-get-off {
+  color: blue;
+}
 </style>

@@ -112,7 +112,9 @@ const drawChart = () => {
     margin: { t: 50, l: 50, r: 30, b: 80 },
   }
 
-  Plotly.newPlot('training-chart', chartData, layout)
+  Plotly.newPlot('training-chart', chartData, layout, {
+  displayModeBar: false
+})
 }
 
 // Watch เพื่อรีเฟรชข้อมูลเมื่อ filters เปลี่ยน

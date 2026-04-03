@@ -63,19 +63,38 @@ const aggregateWorkTimeByMonth = () => {
   const workTimeByMonth = {};
 
   workTimeData.value.forEach(entry => {
-    const monthKey = entry.month;
+    const monthKey = entry.month; // e.g. "2025-W33"
 
-    if (!workTimeByMonth[monthKey]) {
-      workTimeByMonth[monthKey] = { otHours: 0 };
+    // ✅ แปลง "2025-W33" → หาว่า week นั้นอยู่เดือนไหน
+    const [yearStr, weekStr] = monthKey.split('-W');
+    const year = parseInt(yearStr);
+    const week = parseInt(weekStr);
+
+    // คำนวณวันแรก (Monday) ของ week นั้น
+    const jan4 = new Date(year, 0, 4);
+    const startOfWeek1 = new Date(jan4);
+    startOfWeek1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+    const targetDate = new Date(startOfWeek1);
+    targetDate.setDate(startOfWeek1.getDate() + (week - 1) * 7);
+
+    // ✅ ใช้ "YYYY-MM" เป็น key เพื่อ group by เดือน
+    const groupKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+
+    if (!workTimeByMonth[groupKey]) {
+      workTimeByMonth[groupKey] = { otHours: 0 };
     }
 
-    workTimeByMonth[monthKey].otHours += entry.totalOT || 0;
+    workTimeByMonth[groupKey].otHours += entry.totalOT || 0;
   });
 
-  const sortedMonths = Object.keys(workTimeByMonth).sort();
-  const formattedMonths = sortedMonths.map(m =>
-    new Date(m + '-01').toLocaleString('en-US', { month: 'short', year: 'numeric' })
-  );
+  const sortedMonths = Object.keys(workTimeByMonth).sort(); // sort by "YYYY-MM"
+
+  // ✅ format เป็น "Jan 2025", "Feb 2025", ...
+  const formattedMonths = sortedMonths.map(m => {
+    const [y, mo] = m.split('-');
+    return new Date(parseInt(y), parseInt(mo) - 1, 1)
+      .toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  });
 
   return { sortedMonths, formattedMonths, workTimeByMonth };
 };
@@ -117,7 +136,9 @@ const drawChart = async () => {
     margin: { l: 60, r: 20, t: 50, b: 60 },
   };
 
-  Plotly.newPlot('monthly-overtime', chartData, layout).then(() => {
+  Plotly.newPlot('monthly-overtime', chartData, layout, {
+  displayModeBar: false
+}).then(() => {
     document.getElementById('monthly-overtime').addEventListener('plotly_click', onBarClick);
   });
 };

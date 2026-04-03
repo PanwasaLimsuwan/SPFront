@@ -19,16 +19,7 @@ const headcountData = ref([]);
 
 const fetchData = async () => {
   try {
-    const response = await axios.get("http://localhost:5000/api/ManpowerPlan", {
-      params: {
-        division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
-        department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
-        section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
-        biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
-        process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
-      },
-    });
-
+    const response = await axios.get("http://localhost:5000/api/ManpowerPlan");
     headcountData.value = response.data;
     await nextTick();
     drawChart();
@@ -40,39 +31,77 @@ const fetchData = async () => {
 const drawChart = () => {
   if (!headcountData.value.length) return;
 
-  const dates = headcountData.value.map(item => item.date);
-  const planned = headcountData.value.map(item => item.plannedHeadcount);
-  const actual = headcountData.value.map(item => item.actualHeadcount);
+  // ✅ Group รายเดือน เอาค่า average
+  const monthGroups = {};
+  headcountData.value.forEach(item => {
+    const monthKey = item.date?.substring(0, 7); // "2025-08"
+    if (!monthKey) return;
+
+    if (!monthGroups[monthKey]) monthGroups[monthKey] = { planned: [], actual: [] };
+    monthGroups[monthKey].planned.push(item.plannedHeadcount || 0);
+    monthGroups[monthKey].actual.push(item.actualHeadcount || 0);
+  });
+
+  // const avg = (arr) => Math.round(arr.reduce((s, v) => s + v, 0) / arr.length);
+  const sum = (arr) => arr.reduce((s, v) => s + v, 0);
+
+  const sortedMonths = Object.keys(monthGroups).sort();
+
+  // ✅ Format เดือนให้อ่านง่าย "Aug 2025"
+  const formattedMonths = sortedMonths.map(m => {
+    const date = new Date(m + '-01');
+    return date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  });
+
+  // const planned = sortedMonths.map(m => avg(monthGroups[m].planned));
+  // const actual  = sortedMonths.map(m => avg(monthGroups[m].actual));
+  const planned = sortedMonths.map(m => sum(monthGroups[m].planned));
+const actual  = sortedMonths.map(m => sum(monthGroups[m].actual));
+
+  // ✅ สีแท่ง actual ตามว่าต่ำกว่า/สูงกว่า planned
+  const actualColors = sortedMonths.map((m, i) =>
+    actual[i] >= planned[i] ? '#10b981' : '#ef4444'
+  );
 
   const chartData = [
     {
-      x: dates,
-      y: planned,
-      type: "bar",
-      name: "Planned Headcount",
-      marker: { color: "red" },
+      x: formattedMonths, y: planned,
+      type: 'bar', name: 'Planned',
+      marker: { color: '#3b82f6' },
+      text: planned.map(v => `${v} คน`), textposition: 'auto',
     },
     {
-      x: dates,
-      y: actual,
-      type: "bar",
-      name: "Actual Headcount",
-      marker: { color: "blue" },
+      x: formattedMonths, y: actual,
+      type: 'bar', name: 'Actual',
+      marker: { color: actualColors },
+      text: actual.map(v => `${v} คน`), textposition: 'auto',
     },
   ];
 
   const layout = {
-    title: "Headcount vs Plan",
-    barmode: "group",
-    xaxis: { title: "Date", tickangle: -45 },
-    yaxis: { dtick: 1000},
-    paper_bgcolor: "#fff",
-    plot_bgcolor: "#f9f9f9",
-    margin: { l: 60, r: 20, t: 50, b: 60 },
-    responsive: true,
+    title: 'Headcount Plan vs Actual รายเดือน',
+    barmode: 'group',
+    xaxis: { title: 'เดือน', tickangle: -45, automargin: true },
+    yaxis: { title: 'จำนวนพนักงาน (คน)', rangemode: 'tozero', autorange: true },
+    plot_bgcolor: '#f9f9f9',
+    paper_bgcolor: '#fff',
+    margin: { l: 60, r: 20, t: 60, b: 100 },
+    height: 420,
+    legend: { orientation: 'h', y: -0.25 },
+    // ✅ annotation อธิบายสี
+    annotations: [{
+      xref: 'paper', yref: 'paper',
+      x: 1, y: -0.3,
+      text: '🟢 Actual ≥ Planned  🔴 Actual < Planned',
+      showarrow: false,
+      font: { size: 11, color: '#666' },
+      xanchor: 'right',
+    }],
   };
 
-  Plotly.newPlot("headcount-chart", chartData, layout);
+  Plotly.react('headcount-chart', chartData, layout, {
+  displayModeBar: false
+}, { responsive: true });
 };
 
 // ✅ lifecycle

@@ -6,19 +6,22 @@ const props = defineProps({
   filterStatus: String,
   filters: Object,
 });
+
 const emit = defineEmits(["clear-status"]);
 
 const employees = ref([]);
+const workDate = ref(null);
 const isLoading = ref(false);
 
-// ✅ Fetch พร้อมใช้ filters
+// ===============================
+// Fetch Employees
+// ===============================
 const fetchEmployees = async () => {
   isLoading.value = true;
+
   try {
-    // ดึงข้อมูลจาก GateEntry
-    // const gateEntryResponse = await axios.get('https://deploymanpowerdb-f5a0h6fqaehdajck.southeastasia-01.azurewebsites.net/api/GateEntry', {
-    // const gateEntryResponse = await axios.get('http://localhost:5000/api/GateEntry', {
-    const transactionsResponse = await axios.get(
+
+    const response = await axios.get(
       "http://localhost:5000/api/Transactions/GetFaceEntry",
       {
         params: {
@@ -26,58 +29,50 @@ const fetchEmployees = async () => {
             props.filters.division !== "ALL"
               ? props.filters.division
               : undefined,
+
           department:
             props.filters.department !== "ALL"
               ? props.filters.department
               : undefined,
+
           section:
-            props.filters.section !== "ALL" ? props.filters.section : undefined,
-          biz: props.filters.biz !== "ALL" ? props.filters.biz : undefined,
+            props.filters.section !== "ALL"
+              ? props.filters.section
+              : undefined,
+
+          biz:
+            props.filters.biz !== "ALL"
+              ? props.filters.biz
+              : undefined,
+
           process:
-            props.filters.process !== "ALL" ? props.filters.process : undefined,
-        },
+            props.filters.process !== "ALL"
+              ? props.filters.process
+              : undefined,
+
+          // shiftOverride: "B"
+        }
       }
     );
 
-    // ดึงข้อมูลจาก Attendance
-    // const attendanceResponse = await axios.get('http://localhost:5000/api/Attendance/ByDate', {
-    //   params: {
-    //     division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
-    //     department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
-    //     section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
-    //     biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
-    //     process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
-    //   },
-    // });
+    const apiData = response.data;
 
-    // แสดงผลจาก GateEntry
-    // const gateEntryData = gateEntryResponse.data;
-    const transactionsData = transactionsResponse.data;
-    console.log("✅ Data received:", transactionsData.length, "employees");
+    workDate.value = apiData.workDate || apiData.selectedDate;
+    employees.value = apiData.data;
 
-    // ✅ ใช้ข้อมูลจาก API โดยตรง (API จัดการ status ให้หมดแล้ว)
-    employees.value = transactionsData;
-    // const attendanceData = attendanceResponse.data;
+    console.log("✅ Employees:", employees.value.length);
+    console.log("📅 WorkDate:", workDate.value);
 
-    // กรองพนักงานที่มีสถานะ "Missing" จาก Attendance
-    // const missingEmployeeIDs = new Set(attendanceData.filter(att => att.status === 'Missing').map(att => att.empID));
-
-    // แสดงผลพนักงานทั้งหมดจาก GateEntry และกำหนดสถานะ "Missing" สำหรับพนักงานที่มีสถานะ "Missing"
-    // employees.value = gateEntryData.map(entry => {
-    // employees.value = transactionsData.map(entry => {
-    //   if (missingEmployeeIDs.has(entry.empID)) {
-    //     entry.status = 'status-missing'; // เปลี่ยนสถานะเป็น 'status-missing' สำหรับพนักงานที่มีสถานะ 'Missing'
-    //   }
-    //   return entry;
-    // });
   } catch (error) {
-    console.error("Error fetching data:", error);
+    console.error("❌ Error fetching employees:", error);
   } finally {
     isLoading.value = false;
   }
 };
 
-// ✅ watch filters แล้ว refetch และ reset filterStatus
+// ===============================
+// Watch filters
+// ===============================
 watch(
   () => props.filters,
   () => {
@@ -87,31 +82,36 @@ watch(
   { deep: true }
 );
 
-// ✅ watch filterStatus เพื่อ log การเปลี่ยนแปลง
+// ===============================
+// Watch status filter
+// ===============================
 watch(
   () => props.filterStatus,
   (newStatus, oldStatus) => {
-    console.log("🔍 [EmployeeTable] Filter status changed:", {
-      old: oldStatus,
-      new: newStatus,
-    });
+    console.log("🔍 Filter changed:", oldStatus, "→", newStatus);
   }
 );
 
-// ✅ filter ตาม status ที่กด Pie chart
+// ===============================
+// Filter by Status
+// ===============================
 const filteredEmployees = computed(() => {
+
   if (!props.filterStatus) {
-    console.log('📊 [EmployeeTable] Showing all employees:', employees.value.length);
     return employees.value;
   }
-  
-  const filtered = employees.value.filter(e => e.status === props.filterStatus);
-  console.log(`📊 [EmployeeTable] Filtered by ${props.filterStatus}:`, filtered.length, 'employees');
-  return filtered;
+
+  return employees.value.filter(
+    (e) => e.status === props.filterStatus
+  );
+
 });
 
-// ✅ sorted ให้เรียง status ตามลำดับ
+// ===============================
+// Sort by status priority
+// ===============================
 const sortedEmployees = computed(() => {
+
   const rank = {
     "status-missing": 0,
     "status-out-cleanroom": 1,
@@ -120,62 +120,89 @@ const sortedEmployees = computed(() => {
   };
 
   return [...filteredEmployees.value].sort((a, b) => {
+
     const rA = rank[a.status] ?? 99;
     const rB = rank[b.status] ?? 99;
+
     return rA - rB;
+
   });
+
 });
 
-// ✅ reset filterStatus
+// ===============================
+// Reset Filter
+// ===============================
 const resetFilter = () => {
-  console.log("🔄 [EmployeeTable] Resetting filter");
+
   emit("clear-status");
+
   fetchEmployees();
+
 };
 
-// ✅ class status
+// ===============================
+// Status Style
+// ===============================
 const getStatusClass = (status) => {
-  return (
-    {
-      "status-in-cleanroom": "status-in-cleanroom",
-      "status-out-cleanroom": "status-out-cleanroom",
-      "status-missing": "status-missing",
-      "status-get-off": "status-get-off",
-    }[status] || ""
-  );
+
+  return {
+    "status-in-cleanroom": "status-in-cleanroom",
+    "status-out-cleanroom": "status-out-cleanroom",
+    "status-missing": "status-missing",
+    "status-get-off": "status-get-off",
+  }[status] || "";
+
 };
 
-// ✅ label status
+// ===============================
+// Status Label
+// ===============================
 const getStatusLabel = (status) => {
-  return (
-    {
-      "status-in-cleanroom": "In Cleanroom",
-      "status-out-cleanroom": "Out Cleanroom",
-      "status-missing": "Missing",
-      "status-get-off": "Get Off",
-    }[status] || status
-  );
+
+  return {
+    "status-in-cleanroom": "In Cleanroom",
+    "status-out-cleanroom": "Out Cleanroom",
+    "status-missing": "Missing",
+    "status-get-off": "Get Off",
+  }[status] || status;
+
 };
 
+// ===============================
 onMounted(() => {
   fetchEmployees();
 });
 </script>
 
 <template>
+
   <div class="employee-table">
-    <div v-if="isLoading" class="loading">Loading employee data...</div>
+
+    <div v-if="isLoading" class="loading">
+      Loading employee data...
+    </div>
+
     <div v-else class="table-scroll">
-      <h3>Head Count</h3>
+
+      <h3>
+        Head Count
+        <span v-if="workDate" class="workdate">
+          ({{ workDate }})
+        </span>
+      </h3>
+
       <button
         class="refresh-skill-btn"
         @click="resetFilter"
-        title="รีเซตฟิลเตอร์"
+        title="Refresh"
       >
-        <img src="refresh.png" alt="Refresh Icon" class="icon" />
+        <img src="refresh.png" alt="Refresh" class="icon" />
         <span>Refresh</span>
       </button>
+
       <table>
+
         <thead>
           <tr>
             <th>EmpID</th>
@@ -183,63 +210,47 @@ onMounted(() => {
             <th>Lastname</th>
             <th class="datetime-column">Check in time</th>
             <th class="datetime-column">Check out time</th>
-            <!--  <th>Gate No</th> -->
-            <!-- <th>Process</th> -->
-            <!-- <th>CourseGroup</th>
-            <th>WorkGroup</th> -->
             <th>Status</th>
           </tr>
         </thead>
+
         <tbody>
-          <tr v-for="(employee, index) in sortedEmployees" :key="index">
+
+          <tr
+            v-for="(employee, index) in sortedEmployees"
+            :key="index"
+          >
             <td>{{ employee.empID }}</td>
+
             <td>{{ employee.firstName }}</td>
+
             <td>{{ employee.lastName }}</td>
-            <td class="datetime-column">{{ employee.entryDateTime || "-" }}</td>
-            <td class="datetime-column">{{ employee.exitDateTime || "-" }}</td>
-            <!--  <td>{{ employee.gateNo || '-' }}</td> -->
-            <!-- <td>{{ employee.process || '-' }}</td>
-            <td>{{ employee.courseGroup || '-' }}</td>
-            <td>{{ employee.workGroup || '-' }}</td> -->
+
+            <td class="datetime-column">
+              {{ employee.entryDateTime || "-" }}
+            </td>
+
+            <td class="datetime-column">
+              {{ employee.exitDateTime || "-" }}
+            </td>
+
             <td :class="getStatusClass(employee.status)">
               {{ getStatusLabel(employee.status) }}
             </td>
+
           </tr>
+
         </tbody>
+
       </table>
+
     </div>
+
   </div>
+
 </template>
 
 <style scoped>
-.refresh-skill-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /* background-color: tomato; */
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 25px;
-  padding: 6px 14px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 14px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s ease, transform 0.3s ease;
-}
-
-.refresh-skill-btn:hover {
-  background-color: #0056b3;
-  transform: scale(1.05);
-}
-
-.refresh-skill-btn .icon {
-  width: 18px;
-  height: 18px;
-  filter: invert(1);
-}
 
 .employee-table {
   margin-top: 20px;
@@ -297,4 +308,35 @@ th {
 .datetime-column {
   white-space: nowrap;
 }
+
+.refresh-skill-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 6px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.refresh-skill-btn:hover {
+  background-color: #0056b3;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  filter: invert(1);
+}
+
+.workdate {
+  font-size: 14px;
+  color: #666;
+  margin-left: 10px;
+}
+
 </style>

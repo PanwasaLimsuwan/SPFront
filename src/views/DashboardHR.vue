@@ -25,7 +25,7 @@ import EmployeeHeadcount from "./../components/EmployeeHeadcount.vue";
 import TrainingEmployee from "./../components/TrainingEmployee.vue";
 import EmployeeHeadcountHR from "@/components/EmployeeHeadcountHR.vue";
 import StatusTabHR from "@/components/StatusTabHR.vue";
-import InsightsWidget from "../components/InsightsWidget.vue";
+// import InsightsWidget from "../components/InsightsWidget.vue";
 import Logout from "../views/Logout";
 
 const API_BASE = "http://localhost:5000/api";
@@ -39,6 +39,7 @@ const skills = ref([]);
 const retrievedIds = ref([]);
 const widgets = ref([]);
 const availableWidgets = ref([]);
+const headcountFilter = ref(null);
 
 // ✅ Filter options
 const filters = ref({
@@ -111,6 +112,14 @@ const clearSkillFilter = () => {
   selectedSkill.value = null;
 };
 
+const onHeadcountFilter = (filter) => {
+  headcountFilter.value = filter;
+};
+
+const onClearHeadcountFilter = () => {
+  headcountFilter.value = null;
+};
+
 const selectEmployee = (employee) => {
   selectedEmployee.value = employee;
 };
@@ -125,7 +134,8 @@ const SkillsBlock = defineComponent({
   },
   props: {
     filters: Object,
-    selectedSkill: Number,
+    // selectedSkill: Number,
+    selectedSkill: [Number, String, null],
     selectedEmployee: Object,
     employees: Array,
     skills: Array,
@@ -192,7 +202,7 @@ const fetchAvailableWidgets = async () => {
 
 // Component mapping
 const componentMap = {
-  InsightsWidget: markRaw(InsightsWidget),
+  // InsightsWidget: markRaw(InsightsWidget),
   HeadcountStatusHR: markRaw(HeadcountStatusHR),
   EmployeeHeadcountHR: markRaw(EmployeeHeadcountHR),
   SkillsBlock: markRaw(SkillsBlock),
@@ -224,8 +234,8 @@ const buildWidgetsFromDefinitions = () => {
         };
 
         switch (def.widgetId) {
-          case "InsightsWidget":
-            return baseBinds;
+          // case "InsightsWidget":
+          //   return baseBinds;
           case "HeadcountStatusHR":
             return baseBinds;
 
@@ -235,9 +245,9 @@ const buildWidgetsFromDefinitions = () => {
               filterStatus: selectedStatus.value,
             };
 
-          case "SkillsBlock":
+          case "skillsBlock":
             return {
-              ...baseBinds,
+              filters: filters.value,
               selectedSkill: selectedSkill.value,
               selectedEmployee: selectedEmployee.value,
               employees: filteredEmployees.value,
@@ -250,7 +260,7 @@ const buildWidgetsFromDefinitions = () => {
           case "EmployeeHeadcount":
             return {
               ...baseBinds,
-              filterStatus: selectedStatus.value,
+              filter: headcountFilter.value,
             };
 
           case "headcountTransition":
@@ -269,12 +279,17 @@ const buildWidgetsFromDefinitions = () => {
             return { filterStatus: filterEmployeesByStatus };
           case "EmployeeHeadcountHR":
             return { clearStatus: clearStatusFilter };
-          case "SkillsBlock":
+          case "skillsBlock":
             return {
               filterSkills: filterEmployeesBySkill,
               clearSkill: clearSkillFilter,
               selectEmployee,
             };
+          case "HeadcountEmployee": // กราฟ
+            return { filter: onHeadcountFilter }; // ✅ รับ event จากกราฟ
+
+          case "EmployeeHeadcount": // ตาราง
+            return { clearEmployee: onClearHeadcountFilter }; // ✅ รับ clear event
           default:
             return {};
         }
@@ -288,7 +303,7 @@ const buildWidgetsFromDefinitions = () => {
 // ✅ Helper function to apply layout from IDs
 function applyLayoutFromIds(ids) {
   if (!ids || ids.length === 0) return;
-  
+
   const map = new Map(widgets.value.map((w) => [w.id, w]));
   const ordered = ids.map((id) => map.get(id)).filter(Boolean);
   const rest = widgets.value.filter((w) => !ids.includes(w.id));
@@ -495,7 +510,10 @@ onMounted(async () => {
     });
   }
 
-  console.log("✅ Final widget order:", widgets.value.map((w) => w.id));
+  console.log(
+    "✅ Final widget order:",
+    widgets.value.map((w) => w.id)
+  );
 
   // 6. Initialize visibility defaults
   initVisibilityDefault();
@@ -518,7 +536,10 @@ function hideAll() {
   <div class="DashboardHR">
     <header class="header">
       <div class="logo-title">
-        <a href="https://realtimemonitoring-dashboard.netlify.app/dashboard" class="logo">
+        <a
+          href="https://realtimemonitoring-dashboard.netlify.app/dashboard"
+          class="logo"
+        >
           <img src="logo2.png" alt="Sony Logo" />
         </a>
         <h1>Real time monitoring dashboard for leader allocation</h1>
@@ -668,8 +689,7 @@ function hideAll() {
 }
 .btn-customize:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3),
-              0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3), 0 4px 8px rgba(0, 0, 0, 0.1);
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   border-color: #2563eb;
 }
@@ -689,8 +709,7 @@ function hideAll() {
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.3px;
-  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2),
-              0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2), 0 2px 4px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   margin-left: 8px;
   display: inline-flex;
@@ -701,8 +720,7 @@ function hideAll() {
 }
 .cp-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3),
-              0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3), 0 4px 8px rgba(0, 0, 0, 0.1);
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   border-color: #2563eb;
 }
@@ -716,8 +734,7 @@ function hideAll() {
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.3px;
-  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2),
-              0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2), 0 2px 4px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   margin-left: 8px;
   display: inline-flex;
@@ -728,8 +745,7 @@ function hideAll() {
 }
 .cp-close:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3),
-              0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3), 0 4px 8px rgba(0, 0, 0, 0.1);
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   border-color: #2563eb;
 }

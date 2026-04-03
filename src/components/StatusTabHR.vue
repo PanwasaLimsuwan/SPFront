@@ -33,6 +33,9 @@ export default {
   data() {
     return {
       employees: [],
+      attendanceData: [], // ✅ add this
+      // transactionsData: [], // ✅ add this
+      shiftInfo: { shift: '?', shiftType: '', workDate: '' },
       showBell: false,
       hasAlerted: false,
       toast: null,
@@ -50,149 +53,143 @@ export default {
   methods: {
     // ✅ ดึงข้อมูลจาก Attendance (Normal, Late)
     async fetchAttendanceData() {
-      try {
-        const response = await axios.get(
-          "http://localhost:5000/api/Attendance/ByDate",
-          {
-            params: {
-              division:
-                this.filters.division !== "ALL"
-                  ? this.filters.division
-                  : undefined,
-              department:
-                this.filters.department !== "ALL"
-                  ? this.filters.department
-                  : undefined,
-              section:
-                this.filters.section !== "ALL"
-                  ? this.filters.section
-                  : undefined,
-              biz: this.filters.biz !== "ALL" ? this.filters.biz : undefined,
-              process:
-                this.filters.process !== "ALL"
-                  ? this.filters.process
-                  : undefined,
-            },
-          }
-        );
-        this.attendanceData = response.data;
-      } catch (error) {
-        console.error("Error fetching attendance data:", error);
+  try {
+    const response = await axios.get(
+      'http://localhost:5000/api/Attendance/ByDate',
+      {
+        params: {
+          division:   this.filters.division   !== 'ALL' ? this.filters.division   : undefined,
+          department: this.filters.department !== 'ALL' ? this.filters.department : undefined,
+          section:    this.filters.section    !== 'ALL' ? this.filters.section    : undefined,
+          biz:        this.filters.biz        !== 'ALL' ? this.filters.biz        : undefined,
+          process:    this.filters.process    !== 'ALL' ? this.filters.process    : undefined,
+        },
       }
-    },
+    );
+
+    // ✅ แก้จาก response.data → response.data.data
+    this.attendanceData = response.data.data ?? [];
+
+    // ✅ เก็บ shift info
+    this.shiftInfo = {
+      shift:     response.data.shift     ?? '?',
+      shiftType: response.data.shiftType ?? '',
+      workDate:  response.data.workDate  ?? '',
+    };
+  } catch (error) {
+    console.error('Error fetching attendance data:', error);
+    this.attendanceData = [];
+  }
+},
 
     // ✅ ดึงข้อมูลจาก Transactions (Total, Missing)
-    async fetchTransactionsData() {
-      try {
-        const response = await axios.get(
-          "http://localhost:5000/api/Transactions/GetFaceEntry",
-          {
-            params: {
-              division:
-                this.filters.division !== "ALL"
-                  ? this.filters.division
-                  : undefined,
-              department:
-                this.filters.department !== "ALL"
-                  ? this.filters.department
-                  : undefined,
-              section:
-                this.filters.section !== "ALL"
-                  ? this.filters.section
-                  : undefined,
-              biz: this.filters.biz !== "ALL" ? this.filters.biz : undefined,
-              process:
-                this.filters.process !== "ALL"
-                  ? this.filters.process
-                  : undefined,
-            },
-          }
-        );
-        this.transactionsData = response.data;
-      } catch (error) {
-        console.error("Error fetching transactions data:", error);
-      }
-    },
+    // async fetchTransactionsData() {
+    //   try {
+    //     const response = await axios.get(
+    //       "http://localhost:5000/api/Transactions/GetFaceEntry",
+    //       {
+    //         params: {
+    //           division:
+    //             this.filters.division !== "ALL"
+    //               ? this.filters.division
+    //               : undefined,
+    //           department:
+    //             this.filters.department !== "ALL"
+    //               ? this.filters.department
+    //               : undefined,
+    //           section:
+    //             this.filters.section !== "ALL"
+    //               ? this.filters.section
+    //               : undefined,
+    //           biz: this.filters.biz !== "ALL" ? this.filters.biz : undefined,
+    //           process:
+    //             this.filters.process !== "ALL"
+    //               ? this.filters.process
+    //               : undefined,
+    //         },
+    //       }
+    //     );
+    //     // ✅ GetFaceEntry returns { workDate, shift, data: [...] } — extract the array
+    //     this.transactionsData = response.data.data ?? [];
+    //   } catch (error) {
+    //     console.error("Error fetching transactions data:", error);
+    //     this.transactionsData = []; // ✅ fallback so .filter() never crashes
+    //   }
+    // },
 
     updateStats() {
-      // const totalEmployees = this.employees.length;
-      // const inCleanroom = this.employees.filter(
-      //   (e) => e.status === "normal"
-      // ).length;
-      // const outCleanroom = this.employees.filter(
-      //   (e) => e.status === "late"
-      // ).length;
-      // const missing = this.employees.filter(
-      //   (e) => e.status === "Missing"
-      // ).length;
-      // const need = missing;
+  const totalEmployees = this.attendanceData.length;
 
-      // ✅ จำนวนพนักงานทั้งหมดจาก Transactions
-      const totalEmployees = this.transactionsData.length;
+  const normal = this.attendanceData.filter(e => 
+    e.status?.toLowerCase().trim() === "normal"
+  ).length;
 
-      // ✅ Normal และ Late จาก Attendance
-      const inCleanroom = this.attendanceData.filter(
-        (e) => e.status === "normal"
-      ).length;
-      const outCleanroom = this.attendanceData.filter(
-        (e) => e.status === "late"
-      ).length;
+  const late = this.attendanceData.filter(e => 
+    e.status?.toLowerCase().trim() === "late"
+  ).length;
 
-      // ✅ Missing จาก Transactions
-      const missing = this.transactionsData.filter(
-        (e) => e.status === "status-missing"
-      ).length;
+  const absent = this.attendanceData.filter(e => 
+    e.status?.toLowerCase().trim() === "absent"
+  ).length;
 
-      const currentTime = new Date();
+  const workDate = this.shiftInfo.workDate
+    ? (() => {
+        const [year, month, day] = this.shiftInfo.workDate.split("-");
+        return `${day}/${month}/${year}`;
+      })()
+    : new Date().toLocaleDateString("th-TH");
 
-      this.stats = [
-        {
-          value: currentTime.toLocaleTimeString(),
-          label: "SHIFT : ?",
-          subLabel: currentTime.toLocaleDateString("th-TH"),
-          icon: "clock.png",
-        },
-        { value: totalEmployees, label: "พนักงานทั้งหมด", subLabel: "คน" },
-        {
-          value: inCleanroom,
-          label: "เข้างานปกติ",
-          subLabel: "คน",
-          dotColor: "#00cc66",
-        },
-        {
-          value: outCleanroom,
-          label: "เข้างานสาย",
-          subLabel: "คน",
-          dotColor: "#ffcc00",
-        },
-        {
-          value: missing,
-          label: "ขาดงาน",
-          subLabel: "คน",
-          dotColor: "#ff6666",
-        },
-      ];
+  const currentTime = new Date();
 
-      this.updateShift(currentTime);
+  this.stats = [
+    {
+      value: `SHIFT : ${this.shiftInfo.shift ?? '?'}`,   // ✅ SHIFT ขึ้นก่อน
+      label: `เวลา ${currentTime.toLocaleTimeString()}`, // ✅ เวลาอยู่ล่าง
+      subLabel: workDate,
+      icon: "clock.png",
     },
+    { value: totalEmployees, label: "พนักงานทั้งหมด", subLabel: "คน" },
+    {
+      value: normal,
+      label: "เข้างานปกติ",
+      subLabel: "คน",
+      dotColor: "#00cc66",
+    },
+    {
+      value: late,
+      label: "เข้างานสาย",
+      subLabel: "คน",
+      dotColor: "#ffcc00",
+    },
+    {
+      value: absent,
+      label: "ขาดงาน",
+      subLabel: "คน",
+      dotColor: "#ff6666",
+    },
+  ];
+
+  this.updateShift(currentTime);
+},
 
     updateShift(currentTime) {
-      const hours = currentTime.getHours();
-      const shiftLabel =
-        hours >= 7 && hours < 19 ? "SHIFT : DAY" : "SHIFT : NIGHT";
-      this.stats[0].label = shiftLabel;
-    },
+  const { shift, shiftType } = this.shiftInfo;
+  const shiftLabel = shift !== '?'
+    ? `SHIFT : ${shift} (${shiftType})`   // "SHIFT : A (DAY)"
+    : (currentTime.getHours() >= 7 && currentTime.getHours() < 19
+        ? 'SHIFT : DAY' : 'SHIFT : NIGHT');
+  this.stats[0].label = shiftLabel;
+},
 
     startClock() {
-      setInterval(() => {
-        const now = new Date();
-        if (this.stats.length > 0) {
-          this.stats[0].value = now.toLocaleTimeString();
-          this.stats[0].subLabel = now.toLocaleDateString("th-TH");
-          this.updateShift(now);
-        }
-      }, 1000);
-    },
+  setInterval(() => {
+    const now = new Date();
+    if (this.stats.length > 0) {
+      // ✅ แก้ให้ update label แทน value
+      this.stats[0].label = `เวลา ${now.toLocaleTimeString()}`;
+    }
+  }, 1000);
+},
 
     checkShiftAlert() {
       const now = new Date();
@@ -223,14 +220,10 @@ export default {
     //   this.checkShiftAlert();
     // },
     async refreshAll() {
-      // ✅ ดึงข้อมูลจากทั้ง 2 API
-      await Promise.all([
-        this.fetchAttendanceData(),
-        this.fetchTransactionsData(),
-      ]);
-      this.updateStats();
-      this.checkShiftAlert();
-    },
+  await this.fetchAttendanceData();
+  this.updateStats();
+  this.checkShiftAlert();
+}
   },
 
   mounted() {

@@ -4,7 +4,7 @@
     <header class="header">
       <div class="header-left">
         <h1>🎛️ Widget Management</h1>
-        <p class="subtitle">Manage all dashboard widgets and features</p>
+        <!-- <p class="subtitle">Manage all dashboard widgets and features</p> -->
       </div>
       <div class="header-right">
         <!-- <button class="btn-primary" @click="openAddModal">
@@ -639,6 +639,7 @@ onMounted(() => {
 }
 
 .widgets-table td {
+  font-size: 20px;
   padding: 16px;
   border-bottom: 1px solid #e2e8f0;
 }
@@ -665,7 +666,7 @@ onMounted(() => {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -689,7 +690,7 @@ onMounted(() => {
   padding: 4px 8px;
   border-radius: 4px;
   font-family: 'Courier New', monospace;
-  font-size: 13px;
+  font-size: 20px;
 }
 
 /* Action Buttons */
@@ -705,7 +706,7 @@ onMounted(() => {
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 16px;
+  font-size: 24px;
 }
 
 .btn-icon:hover {
@@ -864,7 +865,7 @@ onMounted(() => {
 .warning-text {
   color: #dd6b20;
   margin-top: 16px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 /* Responsive */

@@ -77,7 +77,9 @@ const fetchSkillData = async () => {
     };
 
     await nextTick();
-    Plotly.newPlot("fully-skilled-pie-chart", [trace], layout);
+    Plotly.newPlot("fully-skilled-pie-chart", [trace], layout, {
+  displayModeBar: false
+});
 
     const chart = document.getElementById("fully-skilled-pie-chart");
     chart.on("plotly_click", (data) => {

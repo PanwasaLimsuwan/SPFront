@@ -4,7 +4,8 @@ import axios from 'axios';
 
 const props = defineProps({
   selectedEmployee: Object,
-  selectedSkillFilter: Number,
+  // selectedSkillFilter: Number,
+  selectedSkillFilter: [String, Number, null],
   filters: Object, // ✅ เพิ่ม filters props
 });
 

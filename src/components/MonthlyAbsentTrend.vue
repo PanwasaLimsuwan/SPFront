@@ -1,182 +1,180 @@
 <template>
   <div>
     <div class="filter-bar">
-      <!-- ตัวเลือกเดือน -->
-      <label for="month-select">Select Month:</label>
-      <select id="month-select" v-model="selectedMonth" @change="fetchAbsentData">
-        <option v-for="(month, index) in months" :key="index" :value="index + 1">
-          {{ month }}
-        </option>
+      <label>Year:</label>
+      <select v-model="selectedYear" @change="fetchAbsentData">
+        <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
+      </select>
+
+      <label>Month:</label>
+      <select v-model="selectedMonth" @change="fetchAbsentData">
+        <option v-for="(m, i) in months" :key="i" :value="i + 1">{{ m }}</option>
       </select>
     </div>
 
-    <!-- แสดงกราฟ -->
-    <div v-if="hasData" id="monthly-absent-summary" class="scrollable-chart"></div>
+    <div v-if="loading" class="no-data">⏳ กำลังโหลด...</div>
+    <div v-else-if="hasData" class="chart-scroll-wrapper">
+      <div id="monthly-absent-summary"></div>
+    </div>
     <div v-else class="no-data">ไม่พบข้อมูล</div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
 import axios from 'axios';
 import Plotly from 'plotly.js';
 
-const selectedMonth = ref(null);  // เดือนที่เลือก
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const props = defineProps({ filters: Object });
 
-const absentSummary = ref([]);
-const hasData = ref(true);
+const now = new Date();
+const selectedMonth = ref(now.getMonth() + 1);
+const selectedYear = ref(now.getFullYear());
 
-// รับค่าฟิลเตอร์จาก parent (DashboardHR)
-const props = defineProps({
-  filters: Object
-});
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const years = ref([now.getFullYear()]); // ✅ default ปีปัจจุบันก่อน ไม่ให้ว่าง
+const hasData = ref(false);
+const loading = ref(false);
 
-// ฟังก์ชันดึงข้อมูลการขาดงาน
 const fetchAbsentData = async () => {
+  loading.value = true;
+  hasData.value = false;
+
   try {
     const res = await axios.get('http://localhost:5000/api/Attendance', {
       params: {
-        division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
-        department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
-        section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
-        biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
-        process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
+        division:   props.filters?.division   !== 'ALL' ? props.filters.division   : undefined,
+        department: props.filters?.department !== 'ALL' ? props.filters.department : undefined,
+        section:    props.filters?.section    !== 'ALL' ? props.filters.section    : undefined,
+        biz:        props.filters?.biz        !== 'ALL' ? props.filters.biz        : undefined,
+        process:    props.filters?.process    !== 'ALL' ? props.filters.process    : undefined,
+        status: 'Absent',
+        year:   selectedYear.value,
+        month:  selectedMonth.value,
       },
     });
 
-    const allEmployees = res.data || [];
+    const records = res.data || [];
+    console.log('📦 Absent records:', records.length, 'for', selectedYear.value, selectedMonth.value);
 
-    // กรองเฉพาะ status-missing
-    const dates = allEmployees
-      .filter(emp => (emp.status === 'late' || emp.status === 'Missing') && (emp.date || emp.entryDateTime))
-      .map(emp => ({
-        name: `${emp.firstName} ${emp.lastName}`,  // Employee name
-        date: new Date(emp.date),  // Date of absence
-      }))
-      .filter(({ date }) => !isNaN(date.getTime()));
+    // นับ absent ต่อคน
+    const counts = {};
+    records.forEach(emp => {
+      const key = emp.empID;
+      if (!counts[key]) counts[key] = { name: `${emp.firstName} ${emp.lastName}`, count: 0 };
+      counts[key].count++;
+    });
 
-    // กรองข้อมูลตามเดือนที่เลือก
-    if (selectedMonth.value) {
-      absentSummary.value = countByEmployeeAndMonth(dates).filter(item => new Date(item.month).getMonth() + 1 === selectedMonth.value);
-    } else {
-      absentSummary.value = countByEmployeeAndMonth(dates);  // ถ้าไม่เลือกเดือนให้แสดงทั้งหมด
+    const summary = Object.values(counts).sort((a, b) => b.count - a.count);
+    hasData.value = summary.length > 0;
+
+    loading.value = false;
+    await nextTick();
+    await nextTick();
+
+    if (!hasData.value) return;
+
+    const el = document.getElementById('monthly-absent-summary');
+    if (!el) {
+      console.error('❌ #monthly-absent-summary not found in DOM');
+      return;
     }
 
-    drawMonthlyChart();
+    Plotly.newPlot(el, [{
+      x: summary.map(i => i.count),
+      y: summary.map(i => i.name),
+      type: 'bar',
+      orientation: 'h',
+      marker: { color: '#f44336' },
+      text: summary.map(i => String(i.count)),
+      textposition: 'outside',
+    }], {
+      title: `Absent - ${months[selectedMonth.value - 1]} ${selectedYear.value}`,
+      xaxis: { title: 'Days Absent', dtick: 1 },
+      yaxis: { automargin: true, autorange: 'reversed' },
+      margin: { l: 150, r: 60, t: 50, b: 50 },
+      height: Math.max(300, summary.length * 30 + 100),
+      paper_bgcolor: '#fff',
+      plot_bgcolor: '#f9f9f9',
+    }, { displayModeBar: false });
+
   } catch (err) {
-    console.error('❌ Failed to fetch absent data:', err);
+    console.error('❌ Error fetching absent data:', err);
+    loading.value = false;
   }
 };
 
-// รวมจำนวนการขาดงานตามพนักงานและเดือน
-const countByEmployeeAndMonth = (dateList) => {
-  const counts = {};
-
-  dateList.forEach(({ name, date }) => {
-    const key = `${name}-${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    if (!counts[key]) counts[key] = 0;
-    counts[key]++;
-  });
-
-  return Object.entries(counts).map(([key, count]) => {
-    const [name, year, month] = key.split('-');
-    return {
-      name,
-      month: formatMonth(`${year}-${month}`),
-      count
-    };
-  });
-};
-
-// แปลงรูปแบบเดือน
-const formatMonth = (monthStr) => {
-  const [year, month] = monthStr.split('-');
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${months[parseInt(month) - 1]} ${year}`;
-};
-
-// วาดกราฟ
-const drawMonthlyChart = () => {
-  if (!absentSummary.value.length) {
-    Plotly.purge('monthly-absent-summary');
-    return;
+// เพิ่มฟังก์ชันนี้
+const fetchYears = async () => {
+  try {
+    const res = await axios.get('http://localhost:5000/api/Attendance/AbsentYears');
+    const data = res.data || [];
+    years.value = data.length > 0 ? data : [new Date().getFullYear()];
+  } catch (err) {
+    console.error('❌ Error fetching years:', err);
+    years.value = [new Date().getFullYear()];
   }
-
-  const y = absentSummary.value.map(item => `${item.name}`);  // พนักงานและเดือน
-  const x = absentSummary.value.map(item => item.count);  // จำนวนการขาดงาน
-
-  const trace = {
-    x,
-    y,
-    type: 'bar',
-    orientation: 'h', // แนวนอน
-    marker: {
-      color: '#f44336',  // สีแดงสำหรับทุกบาร์
-    },
-  };
-
-  const layout = {
-    title: 'Monthly Absent',
-    xaxis: {
-      title: 'จำนวนวันที่ขาดงาน',
-      dtick: 1,
-      automargin: true
-    },
-    yaxis: {
-      automargin: true
-    },
-    height: Math.max(400, absentSummary.value.length * 20),
-    paper_bgcolor: '#fff',
-    plot_bgcolor: '#f9f9f9',
-    margin: { l: 100, r: 20, t: 50, b: 60 },
-  };
-
-  Plotly.newPlot('monthly-absent-summary', [trace], layout);
 };
 
-// เรียก fetchAbsentData เมื่อ component mount
-onMounted(fetchAbsentData);
+// ✅ ดึงเดือน/ปีล่าสุดที่มี Absent ใน DB
+const fetchLatestMonthYear = async () => {
+  try {
+    const res = await axios.get('http://localhost:5000/api/Attendance/AbsentLatest');
+    if (res.data) {
+      selectedYear.value  = res.data.year;
+      selectedMonth.value = res.data.month;
+    }
+  } catch (err) {
+    console.error('❌ Error fetching latest month/year:', err);
+    // fallback ใช้ปัจจุบัน
+  }
+};
 
-// watch filters เมื่อมีการเปลี่ยนแปลงให้ดึงข้อมูลใหม่
-watch(() => props.filters, () => {
-  fetchAbsentData();
+onMounted(async () => {
+  await fetchYears();
+  await fetchLatestMonthYear(); // ✅ set เดือน/ปีล่าสุดก่อน
+  await fetchAbsentData();
+});
+
+// แก้ watch ให้ reload years ด้วยเมื่อ filter เปลี่ยน
+watch(() => props.filters, async () => {
+  await fetchYears();
+  await fetchLatestMonthYear();
+  await fetchAbsentData();
 }, { deep: true });
-</script>
+
+// onMounted(() => {
+//   fetchAbsentData();
+// });
+
+// watch(() => props.filters, fetchAbsentData, { deep: true });
+// </script>
 
 <style scoped>
-#monthly-absent-summary {
-  width: 100%;
-  height: 400px; /* หรือสามารถกำหนดขนาดที่ต้องการ */
-  overflow-y: auto; /* ให้ scroll bar แสดงขึ้นเมื่อกราฟเกินพื้นที่ */
-}
-
-.chart-container {
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 15px;
-  background: #f0f4f8;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
+#monthly-absent-summary { width: 100%; }
 .filter-bar {
   margin-bottom: 10px;
   display: flex;
   align-items: center;
+  gap: 8px;
 }
-
-.filter-bar label {
-  margin-right: 8px;
-}
-
 .filter-bar select {
   padding: 4px 8px;
   border-radius: 4px;
 }
+.no-data {
+  text-align: center;
+  padding: 20px;
+  color: #888;
+  font-weight: bold;
+}
+.chart-scroll-wrapper {
+  height: 450px;        /* ✅ ความสูงคงที่ */
+  overflow-y: auto;     /* ✅ scroll ได้ */
+  overflow-x: hidden;
+}
 
-.scrollable-chart::-webkit-scrollbar-thumb {
-  background-color: rgba(100, 100, 100, 0.2);
-  border-radius: 4px;
+#monthly-absent-summary { 
+  width: 100%; 
 }
 </style>

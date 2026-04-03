@@ -16,10 +16,12 @@
       <span v-if="loading" class="loading-text">⏳ Loading...</span>
     </div>
     
+    <div class="chart-container">
     <div v-if="hasData" id="worktime-chart"></div>
     <div v-else class="no-data">
       {{ errorMessage || 'No data to display' }}
     </div>
+  </div>
   </div>
 </template>
 
@@ -213,8 +215,11 @@ const updateChart = () => {
     textposition: 'auto',
   }];
 
+  const chartWidth = Math.max(800, processes.length * 80);
+
   const layout = {
     title: `Weekly Overtime by Process (Week ${selectedWeek.value})`,
+    width: chartWidth,
     xaxis: { 
       title: 'Process',
       tickangle: -45,
@@ -236,7 +241,9 @@ const updateChart = () => {
     displaylogo: false,
   };
 
-  Plotly.newPlot('worktime-chart', chartData, layout, config).then(() => {
+  Plotly.newPlot('worktime-chart', chartData, layout, config, {
+  displayModeBar: false
+}, { responsive: false }).then(() => {
     const chartElement = document.getElementById('worktime-chart');
     if (chartElement) {
       chartElement.on('plotly_click', onBarClick);
@@ -320,5 +327,17 @@ watch(() => props.filters, () => {
   color: #999;
   font-size: 16px;
   padding: 150px 0;
+}
+
+/* ✅ เพิ่ม wrapper ที่ scroll ได้ */
+.chart-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+}
+
+#overtime-chart {
+  min-width: 800px;
+  height: 450px;
 }
 </style>

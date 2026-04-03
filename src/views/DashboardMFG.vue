@@ -7,11 +7,14 @@ import {
   watch,
   defineComponent,
   h,
+  provide,
 } from "vue";
 import axios from "axios";
 import draggable from "vuedraggable"; // ✅ เพิ่ม
-import InsightsWidget from "../components/InsightsWidget.vue";
+// import InsightsWidget from "../components/InsightsWidget.vue";
+import * as signalR from "@microsoft/signalr";
 
+import AssignmentStatusPanel from "../components/AssignmentStatusPanel.vue";
 import HeadcountStatusMFG from "../components/HeadcountStatusMFG.vue";
 import RequiredBarChart from "../components/RequiredBarChart.vue";
 import EmployeeRecommendations from "../components/EmployeeRecommendations.vue";
@@ -26,6 +29,7 @@ import HeadcountPlan from "../components/HeadcountPlan.vue";
 import EmployeeHeadcountMFG from "../components/EmployeeHeadcountMFG.vue";
 // import StatusTabMFG from "@/components/StatusTabMFG.vue";
 import StatusTabMFG from "../components/StatusTabMFG.vue";
+import PendingAssignmentsPanel from "../components/PendingAssignmentsPanel.vue";
 import Logout from "./Logout";
 // import DynamicChartBuilder from "../components/DynamicChartBuilder.vue"
 
@@ -44,6 +48,16 @@ api.interceptors.request.use((cfg) => {
   return cfg;
 });
 
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl("http://localhost:5000/notificationHub")
+  .withAutomaticReconnect()
+  .build();
+
+// await connection.start();
+
+// window.connection = connection;
+
+const widgets = ref([]);
 const employees = ref([]);
 const selectedStatus = ref(null);
 const selectedSkill = ref(null);
@@ -53,6 +67,26 @@ const skills = ref([]);
 const retrievedIds = ref([]); // ✅ เปลี่ยนเป็น ref เพื่อให้เป็น reactive
 
 const selectedProcess = ref(null);
+const selectedBiz = ref(null);
+const selectedWorkDate = ref(null);
+const headcountNeed = ref(0);
+
+// ✅ เพิ่ม: ref สำหรับ RequiredBarChart เพื่อ call refresh จากนอก
+const requiredBarChartRef = ref(null);
+
+const refreshBarChart = () => {
+  requiredBarChartRef.value?.refresh();
+};
+
+// ✅ provide ให้ EmployeeRecommendations ใช้ได้
+provide("refreshBarChart", refreshBarChart);
+
+// 🔥 provide ให้ EmployeeRecommendations inject ได้
+provide("selectedProcess", selectedProcess);
+provide("selectedBiz", selectedBiz);
+provide("selectedSkill", selectedSkill);
+provide("selectedWorkDate", selectedWorkDate);
+provide("headcountNeed", headcountNeed);
 
 // ✅ Filters
 const filters = ref({
@@ -82,14 +116,39 @@ const processes = computed(() => [
 ]);
 
 // ✅ Fetch Employee Data
-onMounted(async () => {
-  try {
-    const response = await axios.get("http://localhost:5000/api/EmployeeInfo");
-    employees.value = response.data;
-  } catch (error) {
-    console.error("Error fetching employees:", error);
-  }
-});
+// onMounted(async () => {
+//   console.log("🚀 Dashboard mounting...");
+
+//   // โหลด employee
+//   try {
+//     const response = await axios.get("http://localhost:5000/api/EmployeeInfo");
+//     employees.value = response.data;
+//   } catch (error) {
+//     console.error(error);
+//   }
+
+//   // โหลด widget
+//   await fetchAvailableWidgets();
+
+//   const builtWidgets = buildWidgetsFromDefinitions();
+//   const savedOrder = await fetchWidgetSettings();
+
+//   if (savedOrder?.length) {
+//     const map = new Map(builtWidgets.map((w) => [w.id, w]));
+//     widgets.value = savedOrder.map((id) => map.get(id)).filter(Boolean);
+//   } else {
+//     widgets.value = builtWidgets;
+//   }
+
+//   initVisibilityDefault();
+//   fetchAssignmentsStatus();
+//   setInterval(fetchAssignmentsStatus, 5000);
+
+//   // ✅ START SIGNALR ตรงนี้
+//   connection.start()
+//     .then(() => console.log("✅ SignalR Connected"))
+//     .catch(err => console.error(err));
+// });
 
 // ✅ Filter function
 const filteredEmployees = computed(() => {
@@ -180,7 +239,8 @@ const SkillsBlock = defineComponent({
   },
   props: {
     filters: Object,
-    selectedSkill: Number,
+    // selectedSkill: Number,
+    selectedSkill: [Number, String, null], // ✅ แก้จาก Number เป็น รับได้ทั้ง Number และ String
     selectedEmployee: Object,
     employees: Array,
     skills: Array,
@@ -250,7 +310,9 @@ const fetchAvailableWidgets = async () => {
 
 // Component mapping - ใช้สำหรับแปลง componentName เป็น Vue component จริง
 const componentMap = {
-  InsightsWidget: markRaw(InsightsWidget),
+  // InsightsWidget: markRaw(InsightsWidget),
+  AssignmentStatusPanel: markRaw(AssignmentStatusPanel),
+  PendingAssignmentsPanel: markRaw(PendingAssignmentsPanel),
   HeadcountStatusMFG: markRaw(HeadcountStatusMFG),
   EmployeeHeadcountMFG: markRaw(EmployeeHeadcountMFG),
   RequiredBarChart: markRaw(RequiredBarChart),
@@ -284,13 +346,18 @@ const buildWidgetsFromDefinitions = () => {
               filters: filters.value,
             };
           case "requiredBar":
+            return { filters: filters.value, ref: requiredBarChartRef };
+          // case "recommendations":
+          //   return {
+          //     selectedProcess: selectedProcess.value,
+          //     selectedSkill: selectedSkill.value,
+          //     selectedWorkDate: selectedWorkDate.value,
+          //     filters: filters.value,
+          //   };
+          case "assignmentStatus":
             return { filters: filters.value };
           case "recommendations":
-            return {
-              selectedProcess: selectedProcess.value,
-              selectedSkill: selectedSkill.value,
-              filters: filters.value,
-            };
+            return {}; // ✅ ใช้ inject ไม่ต้องส่ง on
           case "skillsBlock":
             return {
               filters: filters.value,
@@ -316,8 +383,23 @@ const buildWidgetsFromDefinitions = () => {
             return { filterStatus: filterEmployeesByStatus };
           case "headcountTable":
             return { clearStatus: clearStatusFilter };
+          case "requiredBar":
+            return { barClick: handleBarClick }; // ✅ เชื่อมกับ handleBarClick
+          // case "recommendations":
+          //   return {
+          //     selectedProcess: selectedProcess.value,
+          //     selectedSkill: selectedSkill.value,
+          //     selectedWorkDate: selectedWorkDate.value, // ✅ เพิ่ม
+          //     filters: filters.value,
+          //   };
+          case "assignmentStatus":
+  return {
+    changed: () => {
+      refreshBarChart();        // refresh กราฟหลัง approve/complete
+    }
+  };
           case "recommendations":
-            return { selectEmployee };
+            return {};
           case "skillsBlock":
             return {
               filterSkills: filterEmployeesBySkill,
@@ -331,6 +413,12 @@ const buildWidgetsFromDefinitions = () => {
     }))
     .filter((w) => w.comp !== null); // กรอง widget ที่ไม่มี component
 
+  // ใน buildWidgetsFromDefinitions ก่อน return
+console.log("🔍 Building widgets from:", availableWidgets.value.map(w => ({
+  id: w.widgetId, 
+  comp: w.componentName,
+  found: !!componentMap[w.componentName]
+})));
   return builtWidgets;
 };
 
@@ -481,61 +569,48 @@ const buildWidgetsFromDefinitions = () => {
 // ]);
 
 // เปลี่ยนเป็น
-const widgets = ref([]);
-
-// แก้ไข onMounted ให้โหลดตามลำดับที่ถูกต้อง
 onMounted(async () => {
   console.log("🚀 Dashboard mounting...");
-  
-  // 1. โหลด employee data
+
   try {
     const response = await axios.get("http://localhost:5000/api/EmployeeInfo");
     employees.value = response.data;
-    console.log("✅ Employees loaded:", employees.value.length);
   } catch (error) {
-    console.error("❌ Error fetching employees:", error);
+    console.error(error);
   }
 
-  // 2. โหลด widget definitions จาก API
   await fetchAvailableWidgets();
-  console.log("✅ Available widgets loaded:", availableWidgets.value.length);
 
-  // 3. สร้าง widgets จาก definitions (ใช้ displayOrder จาก API)
   const builtWidgets = buildWidgetsFromDefinitions();
-  console.log("✅ Built widgets:", builtWidgets.length);
-
-  // 4. โหลด user settings (ลำดับ + visibility)
   const savedOrder = await fetchWidgetSettings();
-  console.log("✅ Saved widget order:", savedOrder);
 
-  // 5. จัดเรียง widgets ตาม user settings หรือ default order
-  if (savedOrder && savedOrder.length > 0) {
-    console.log("📌 Applying saved order");
-    retrievedIds.value = savedOrder;
-    
-    // จัดเรียงตาม saved order
+  if (savedOrder?.length) {
     const map = new Map(builtWidgets.map((w) => [w.id, w]));
-    const ordered = savedOrder.map((id) => map.get(id)).filter(Boolean);
-    const rest = builtWidgets.filter((w) => !savedOrder.includes(w.id));
-    widgets.value = [...ordered, ...rest];
+    // ✅ เอา saved order มาก่อน แล้วเพิ่ม widget ใหม่ที่ยังไม่มีใน saved order ต่อท้าย
+    const orderedWidgets = savedOrder
+      .map((id) => map.get(id))
+      .filter(Boolean);
+    
+    const newWidgets = builtWidgets.filter(
+      (w) => !savedOrder.includes(w.id)  // ✅ widget ใหม่ที่ไม่มีใน saved
+    );
+    
+    widgets.value = [...orderedWidgets, ...newWidgets];
   } else {
-    console.log("📌 Using default displayOrder");
-    // ใช้ลำดับจาก displayOrder ใน API
-    widgets.value = builtWidgets.sort((a, b) => {
-      const defA = availableWidgets.value.find((d) => d.widgetId === a.id);
-      const defB = availableWidgets.value.find((d) => d.widgetId === b.id);
-      return (defA?.displayOrder || 999) - (defB?.displayOrder || 999);
-    });
+    widgets.value = builtWidgets;
   }
 
-  console.log("✅ Final widget order:", widgets.value.map(w => w.id));
-
-  // 6. Initialize visibility defaults
   initVisibilityDefault();
-
-  // 7. Start polling for assignments
   fetchAssignmentsStatus();
   setInterval(fetchAssignmentsStatus, 5000);
+
+  // ✅ START SignalR ตรงนี้เท่านั้น
+  try {
+    await connection.start();
+    console.log("✅ SignalR Connected");
+  } catch (err) {
+    console.error("❌ SignalR error:", err);
+  }
 });
 
 // helper: ใช้ layout ที่โหลดจาก API มาจัดเรียง widgets
@@ -757,7 +832,7 @@ const fetchWidgetSettings = async () => {
       `http://localhost:5000/api/admin/get-user-id?email=${userEmail}`
     );
     const user_id = response.data.user_id;
-    
+
     if (!user_id) {
       console.error("User ID not found in database");
       return null;
@@ -783,7 +858,6 @@ const fetchWidgetSettings = async () => {
 
     // return widget IDs order
     return settings.map((w) => w.id);
-    
   } catch (error) {
     console.error("Error fetching widget settings:", error);
     return null;
@@ -848,6 +922,15 @@ const saveAssignment = () => {
   closeModal(); // ปิด modal หลังบันทึก
 };
 
+const handleBarClick = (data) => {
+  console.log("📥 FROM GRAPH:", data);
+  selectedProcess.value = data.process;
+  selectedBiz.value = data.biz;
+  selectedSkill.value = data.skillGroup; // ✅ เพิ่ม
+  selectedWorkDate.value = data.workDate;
+  headcountNeed.value = data.headcountShortage;
+};
+
 const handleLogout = async () => {
   await saveWidgetSettings(); // บันทึกการตั้งค่าก่อน logout
   localStorage.removeItem("token");
@@ -910,7 +993,10 @@ function hideAll() {
     <!-- ✅ ฟิลเตอร์ยังอยู่ใน header -->
     <header class="header">
       <div class="logo-title">
-        <a href="https://realtimemonitoring-dashboard.netlify.app/dashboard" class="logo">
+        <a
+          href="https://realtimemonitoring-dashboard.netlify.app/dashboard"
+          class="logo"
+        >
           <img src="logo2.png" alt="Sony Logo" />
         </a>
         <h1>Real time monitoring dashboard for leader allocation</h1>
@@ -1024,7 +1110,7 @@ function hideAll() {
             ยกเลิก
           </button>
         </div> -->
-      <!-- </div>
+    <!-- </div>
     </div> -->
 
     <!-- ✅ StatusTabMFG อยู่นอก widgets ได้ -->
@@ -1071,6 +1157,9 @@ function hideAll() {
             :is="element.comp"
             v-bind="element.binds()"
             v-on="element.on()"
+            :ref="
+              element.id === 'requiredBar' ? requiredBarChartRef : undefined
+            "
           />
         </div>
       </template>
@@ -1380,8 +1469,7 @@ function hideAll() {
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.3px;
-  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2),
-              0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2), 0 2px 4px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   margin-left: 8px;
   display: inline-flex;
@@ -1394,8 +1482,7 @@ function hideAll() {
 /* เอฟเฟกต์เมื่อ hover */
 .btn-customize:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3),
-              0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3), 0 4px 8px rgba(0, 0, 0, 0.1);
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   border-color: #2563eb;
 }
@@ -1452,8 +1539,7 @@ function hideAll() {
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.3px;
-  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2),
-              0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2), 0 2px 4px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   margin-left: 8px;
   display: inline-flex;
@@ -1464,8 +1550,7 @@ function hideAll() {
 }
 .cp-close:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3),
-              0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3), 0 4px 8px rgba(0, 0, 0, 0.1);
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   border-color: #2563eb;
 }
@@ -1484,8 +1569,7 @@ function hideAll() {
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.3px;
-  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2),
-              0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2), 0 2px 4px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   margin-left: 8px;
   display: inline-flex;
@@ -1496,8 +1580,7 @@ function hideAll() {
 }
 .cp-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3),
-              0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3), 0 4px 8px rgba(0, 0, 0, 0.1);
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   border-color: #2563eb;
 }

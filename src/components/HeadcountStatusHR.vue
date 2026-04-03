@@ -10,7 +10,7 @@ const props = defineProps({
 const emit = defineEmits(['filter-status']);
 // const headcountData = ref([]);
 const attendanceData = ref([]);
-const transactionsData = ref([]);
+// const transactionsData = ref([]);
 const isLoading = ref(false);
 const chartRendered = ref(false); // ✅ เพิ่ม flag
 
@@ -40,47 +40,58 @@ const chartRendered = ref(false); // ✅ เพิ่ม flag
 
 const fetchAttendanceData = async () => {
   try {
-    const response = await axios.get('http://localhost:5000/api/Attendance/ByDate', {
-      params: {
-        division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
-        department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
-        section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
-        biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
-        process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
-      },
-    });
-    attendanceData.value = response.data;
+    const response = await axios.get(
+      'http://localhost:5000/api/Attendance/ByDate',
+      {
+        params: {
+          division:   props.filters.division   !== 'ALL' ? props.filters.division   : undefined,
+          department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
+          section:    props.filters.section    !== 'ALL' ? props.filters.section    : undefined,
+          biz:        props.filters.biz        !== 'ALL' ? props.filters.biz        : undefined,
+          process:    props.filters.process    !== 'ALL' ? props.filters.process    : undefined,
+        },
+      }
+    );
+
+    // ✅ แก้ตรงนี้
+    attendanceData.value = response.data.data ?? [];
+
   } catch (error) {
     console.error('Error fetching attendance data:', error);
+    attendanceData.value = [];
   }
 };
 
-const fetchTransactionsData = async () => {
-  try {
-    const response = await axios.get('http://localhost:5000/api/Transactions/GetFaceEntry', {
-      params: {
-        division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
-        department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
-        section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
-        biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
-        process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
-      },
-    });
-    transactionsData.value = response.data;
-  } catch (error) {
-    console.error('Error fetching transactions data:', error);
-  }
-};
+// const fetchTransactionsData = async () => {
+//   try {
+//     const response = await axios.get('http://localhost:5000/api/Transactions/GetFaceEntry', {
+//       params: {
+//         division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
+//         department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
+//         section: props.filters.section !== 'ALL' ? props.filters.section : undefined,
+//         biz: props.filters.biz !== 'ALL' ? props.filters.biz : undefined,
+//         process: props.filters.process !== 'ALL' ? props.filters.process : undefined,
+//       },
+//     });
+//     // ✅ Extract the nested `data` array from the response object
+//     transactionsData.value = response.data.data ?? [];
+//   } catch (error) {
+//     console.error('Error fetching transactions data:', error);
+//     transactionsData.value = []; // ✅ Fallback to empty array on error
+//   }
+// };
 
 // ✅ ดึงข้อมูลทั้งหมด
 const fetchHeadcountData = async () => {
   isLoading.value = true;
   try {
-    await Promise.all([fetchAttendanceData(), fetchTransactionsData()]);
+    await fetchAttendanceData(); // ✅ ใช้ตัวเดียวพอ
   } finally {
     isLoading.value = false;
     await nextTick();
-    drawChart();
+    setTimeout(() => {
+  drawChart();
+}, 100);
   }
 };
 
@@ -132,63 +143,54 @@ const fetchHeadcountData = async () => {
 //   });
 // };
 
+// ✅ แก้ drawChart() ใน HeadcountStatusHR.vue
 const drawChart = () => {
-  // นับ Normal และ Late จาก Attendance
-  const normalCount = attendanceData.value.filter(e => e.status === 'normal').length;
-  const lateCount = attendanceData.value.filter(e => e.status === 'late').length;
-  
-  // นับ Missing จาก Transactions
-  const missingCount = transactionsData.value.filter(e => e.status === 'status-missing').length;
+  if (!attendanceData.value.length) return;
 
-  const data = [{
-    labels: ['Normal', 'Late', 'Missing'],
-    values: [normalCount, lateCount, missingCount],
+  const chartEl = document.getElementById('headcount-pie-chart');
+  if (!chartEl) return;
+
+  const normal = attendanceData.value.filter(e => e.status?.toLowerCase().trim() === 'normal').length;
+  const absent = attendanceData.value.filter(e => e.status?.toLowerCase().trim() === 'absent').length;
+
+  if (normal + absent === 0) return;
+
+  Plotly.newPlot(chartEl, [{
+    // title: 'HeadCount Status',
+    labels: ['Normal', 'Absent'],
+    values: [normal, absent],
     type: 'pie',
-    marker: {
-      colors: ['#2ECC71', '#F39C12', '#E74C3C'],
-    },
+    marker: { colors: ['#2ECC71', '#E74C3C'] },
     textinfo: 'label+percent',
     hoverinfo: 'label+value+percent',
-  }];
-
-  const layout = {
-    title: 'Headcount Status',
-    height: 500,
+  }], {
+    // ✅ เพิ่ม title พร้อม workDate เหมือน MFG
+    // title: `Headcount Status${workDate.value ? ' (' + workDate.value + ')' : ''}`,
+    height: 500,   // ✅ ขยายให้ใหญ่เท่า MFG
     width: 500,
-  };
+    paper_bgcolor: 'rgba(0,0,0,0)',
+  }, { displayModeBar: false });
 
-  Plotly.newPlot('headcount-pie-chart', data, layout);
-
-  const chart = document.getElementById('headcount-pie-chart');
-  chart.on('plotly_click', (data) => {
-    const clickedLabel = data.points[0].label;
-    // console.log('Clicked Label:', clickedLabel);
-    const labelToStatus = {
-      'Normal': 'normal',
-      'Late': 'late',
-      'Missing': 'status-missing',
-    };
-    emit('filter-status', labelToStatus[clickedLabel]);
+  chartEl.on('plotly_click', (eventData) => {
+    if (!eventData.points?.length) return;
+    const labelMap = { 'Normal': 'normal', 'Absent': 'absent' };
+    const status = labelMap[eventData.points[0].label];
+    if (status) emit('filter-status', status);
   });
 };
 
 let fetchTimeout = null;
+
 watch(
   () => props.filters,
   async () => {
     clearTimeout(fetchTimeout);
     fetchTimeout = setTimeout(async () => {
-      chartRendered.value = false;
       await fetchHeadcountData();
-    }, 300); // ✅ รอ 300ms ก่อนเรียก API
+    }, 300);
   },
   { deep: true }
 );
-
-// ✅ ดูค่าจาก filter ถ้ามีการเปลี่ยนแปลง -> reload ข้อมูลใหม่
-watch(() => props.filters, async () => {
-  await fetchHeadcountData();
-}, { deep: true });
 
 // ✅ เริ่มต้น mount component -> fetch data และวาด chart
 onMounted(async () => {
@@ -197,19 +199,46 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="headcount-pie-chart">
-    <div v-if="isLoading" class="loading">Loading headcount data...</div>
-    <div v-else>
-      <div id="headcount-pie-chart"></div>
-    </div>
+  <div class="headcount-status-container">
+
+    <!-- ✅ เพิ่ม header เหมือน MFG -->
+    <h3>
+      Headcount Status
+      <span v-if="workDate" class="workdate">({{ workDate }})</span>
+    </h3>
+
+    <div
+      id="headcount-pie-chart"
+      v-show="!isLoading && attendanceData.length > 0"
+    ></div>
+
+    <div v-if="isLoading" class="loading">Loading chart...</div>
+    <div v-else-if="attendanceData.length === 0" class="loading">ไม่พบข้อมูล</div>
+
   </div>
 </template>
 
 <style scoped>
+.headcount-status-container {
+  width: 100%;
+}
+
 #headcount-pie-chart {
   width: 100%;
   max-width: 500px;
   margin: auto;
+}
+
+h3 {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.workdate {
+  font-size: 14px;
+  color: #666;
+  margin-left: 10px;
 }
 
 .loading {
@@ -217,33 +246,5 @@ onMounted(async () => {
   font-weight: bold;
   color: #888;
   padding: 20px;
-}
-
-.refresh-skill-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: blue;
-  color: white;
-  border: none;
-  border-radius: 25px;
-  padding: 6px 14px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 14px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s ease, transform 0.3s ease;
-}
-
-.refresh-skill-btn:hover {
-  background-color: #0056b3;
-  transform: scale(1.05);
-}
-
-.refresh-skill-btn .icon {
-  width: 18px;
-  height: 18px;
-  filter: invert(1);
 }
 </style>

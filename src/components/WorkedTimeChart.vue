@@ -286,7 +286,9 @@ export default {
             showarrow: false,
             font: { size: 16, color: "#888" },
           }],
-        });
+        }, {
+  displayModeBar: false
+});
         return;
       }
 
@@ -328,7 +330,9 @@ export default {
         displaylogo: false,
       };
 
-      Plotly.newPlot("worked-time-chart", chartData, layout, config);
+      Plotly.newPlot("worked-time-chart", chartData, layout, config, {
+  displayModeBar: false
+});
       console.log("✅ Chart rendered successfully");
     },
   },

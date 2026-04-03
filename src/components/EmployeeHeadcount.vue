@@ -19,10 +19,10 @@ const emit = defineEmits(['clear-employee']);
 
 onMounted(async () => {
   try {
-    // const response = await axios.get("http://localhost:5000/api/GateEntry");
-        const response = await axios.get("http://localhost:5000/api/Transactions/GetFaceEntry");
-    employees.value = response.data;
-    filteredEmployees.value = response.data;
+    const response = await axios.get('http://localhost:5000/api/Attendance/ByDate');
+    // ✅ เปลี่ยนจาก response.data เป็น response.data.data
+    employees.value = Array.isArray(response.data.data) ? response.data.data : [];
+    filteredEmployees.value = employees.value;
   } catch (error) {
     console.error("Error fetching employee data:", error);
   }
