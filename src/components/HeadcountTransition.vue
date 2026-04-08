@@ -118,11 +118,11 @@ const drawChart = () => {
     barmode: "relative",
     height: 500,
     xaxis: {
-      title: "Months",
+      title: "เดือน",
       tickangle: -45,
     },
     yaxis: {
-      title: "Number of Employees",
+      title: "จำนวนพนักงาน",
     },
     legend: {
       x: 1,

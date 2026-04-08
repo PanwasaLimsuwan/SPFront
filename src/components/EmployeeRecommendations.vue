@@ -1,8 +1,25 @@
 <template>
   <div class="employee-recommendations">
-    <p v-if="!selectedProcess" style="color: #999; font-size: 16px">
-      💡 กรุณากดที่แท่งกราฟเพื่อดูพนักงานแนะนำ
-    </p>
+
+    <!-- ✅ Stepper -->
+    <div class="stepper">
+      <span class="step" :class="{ done: selectedProcess }">
+        <span class="dot"></span> เลือก Process
+      </span>
+      <span class="step-arrow">›</span>
+      <span class="step" :class="{ active: selectedProcess }">
+        <span class="dot"></span> ดูพนักงาน
+      </span>
+      <span class="step-arrow">›</span>
+      <span class="step">
+        <span class="dot"></span> ยืนยัน Assign
+      </span>
+    </div>
+
+    <div v-if="!selectedProcess">
+      <!-- <div class="prompt-icon">👆</div>
+      <p>กดที่แท่งกราฟด้านบนเพื่อดูพนักงานที่แนะนำ</p> -->
+    </div>
 
     <div v-else class="info-bar">
       <span
@@ -20,7 +37,7 @@
       </span>
     </div>
 
-    <!-- ✅ warning ถ้าไม่มีสิทธิ์ -->
+    <!-- ✅ warning ถ้าไม่มีสิทธิ์ (fallback — ปกติจะถูก block ที่ chart แล้ว) -->
     <div
       v-if="selectedProcess && !canSelectForThisProcess"
       class="no-permission-bar"
@@ -36,24 +53,6 @@
         <img src="refresh.png" alt="Refresh" class="icon" />
         <span>รีเซต</span>
       </button>
-
-      <!-- <button
-        class="auto-assign-btn"
-        :disabled="
-          !selectedProcess || isAutoAssigning || !canSelectForThisProcess
-        "
-        @click="runAutoAssign"
-        :title="
-          !canSelectForThisProcess
-            ? 'ไม่มีสิทธิ์ Assign Process นี้'
-            : !selectedProcess
-            ? 'กรุณาเลือก Process ก่อน'
-            : `Auto-Assign ${headcountNeed} คนที่ดีที่สุด`
-        "
-      >
-        <span v-if="isAutoAssigning">⏳ กำลัง Assign...</span>
-        <span v-else>⚡ Auto-Assign {{ headcountNeed }} คน</span>
-      </button> -->
     </div>
 
     <div
@@ -95,11 +94,11 @@
       <table>
         <thead>
           <tr>
-            <!-- <th rowspan="2">ลำดับ</th> -->
             <th rowspan="2">รหัส</th>
             <th rowspan="2">ชื่อ</th>
             <th rowspan="2">นามสกุล</th>
-            <th rowspan="2">OT สะสม ⓘ</th>
+            <!-- <th rowspan="2">OT สะสม ⓘ</th> -->
+            <th rowspan="2">จำนวน Worktime</th>
             <th colspan="6" style="background: #dbeafe; color: #1e40af">
               ระดับ Skill
             </th>
@@ -136,7 +135,6 @@
               'row-active-assigned': emp.assignmentStatus === 'Active',
             }"
           >
-            <!-- <td>{{ index+1 }}</td> -->
             <td>{{ emp.empID }}</td>
             <td>
               <div
@@ -172,7 +170,6 @@
               </span>
               <small style="color: #999"> / 60h</small>
             </td>
-            <!-- แก้เฉพาะ tbody ส่วน skill columns -->
             <td class="skill-td">
               <span :class="skillCellClass(emp.material)">{{
                 getSkillLabel(emp.material)
@@ -235,16 +232,21 @@
     </div>
 
     <div class="legend">
-      <span><span class="legend-dot cell-level-0"></span> Not Trained (0)</span>
-      <span><span class="legend-dot cell-level-1"></span> Basic (1)</span>
-      <span><span class="legend-dot cell-level-2"></span> Medium (2)</span>
-      <span><span class="legend-dot cell-level-3"></span> Expert (3)</span>
-      <!-- <span style="color: #92400e; font-size: 16px">■ รออนุมัติ</span>
-      <span style="color: #065f46; font-size: 16px">■ กำลังทำงาน</span> -->
-      <!-- <span style="margin-left: 8px; color: #666; font-size: 16px">
-        🔵 แถวสีฟ้า = จำนวนที่ต้องการ {{ headcountNeed }} คนแรก
-      </span> -->
-    </div>
+  <button
+    v-for="level in [0,1,2,3]"
+    :key="level"
+    class="legend-btn"
+    :class="{ [`active-${level}`]: selectedSkillLevel === level }"
+    @click="filterBySkillLevel(level)"
+  >
+    <span :class="'legend-dot dot-' + level"></span>
+    {{ ['Not Trained','Basic','Medium','Expert'][level] }}
+  </button>
+
+  <!-- <button class="refresh-skill-btn" @click="selectedSkillLevel = null">
+    รีเซต
+  </button> -->
+</div>
 
     <div v-if="showModal" class="modal">
       <div class="modal-content">
@@ -258,7 +260,6 @@
             <strong>Process ปัจจุบัน:</strong> {{ modalEmployee.biz }} /
             {{ modalEmployee.process }}
           </p>
-          <!-- <p><strong>Skill รวม:</strong> {{ modalEmployee.totalSkill }} / 18</p> -->
         </div>
         <hr style="margin: 12px 0" />
         <label>Biz ปลายทาง:</label>
@@ -275,10 +276,6 @@
           class="input-field"
           placeholder="ToProcess"
         />
-
-        <!-- <p v-if="selectedSkill" style="color:#007bff;font-size:13px;margin-top:8px">
-          🔧 Skill ที่ต้องการ: <strong>{{ selectedSkill }}</strong>
-        </p> -->
         <div class="modal-actions">
           <button class="btn-confirm" @click="saveAssignment">ยืนยัน</button>
           <button class="btn-cancel" @click="showModal = false">ยกเลิก</button>
@@ -296,12 +293,18 @@ import jwt_decode from "jwt-decode";
 const selectedProcess = inject("selectedProcess", ref(null));
 const selectedBiz = inject("selectedBiz", ref(null));
 const selectedSkill = inject("selectedSkill", ref(null));
+const selectedSkillLevel = ref(null);
 const selectedWorkDate = inject("selectedWorkDate", ref(null));
 const headcountNeed = inject("headcountNeed", ref(1));
 const refreshBarChart = inject("refreshBarChart", () => {});
 
 const props = defineProps({ filters: Object });
 const emit = defineEmits(["assignmentChanged"]);
+
+const filterBySkillLevel = (level) => {
+  selectedSkillLevel.value =
+    selectedSkillLevel.value === level ? null : level;
+};
 
 // ✅ JWT claims
 const currentUser = computed(() => {
@@ -359,17 +362,12 @@ const isActive = (empID) =>
   );
 const roundTime = (t) => Math.round((t || 0) * 10) / 10;
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("th-TH") : "");
-const skillClass = (l) =>
-  l >= 3
-    ? "skill-expert"
-    : l >= 2
-    ? "skill-good"
-    : l >= 1
-    ? "skill-basic"
-    : "skill-none";
+
 const resetFilter = () => {
   filteredEmployees.value = [];
   autoAssignResult.value = null;
+  selectedProcess.value = null;
+  selectedBiz.value = null;
 };
 
 const LEADER_POSITIONS = [
@@ -427,13 +425,18 @@ const computeRecommendations = () => {
         emp.faceStatus === "status-in-cleanroom"
     )
     .filter((emp) => !isLeader(emp))
-    .filter((emp) => emp.totalSkill > 0)
-    .sort((a, b) => {
-      const diff = (a.assignmentStatus ? 1 : 0) - (b.assignmentStatus ? 1 : 0);
-      return diff !== 0
-        ? diff
-        : b.totalSkill - a.totalSkill || a.totalTime - b.totalTime;
-    });
+   .filter((emp) => {
+  if (selectedSkillLevel.value === null) return true;
+
+  return [
+    emp.material,
+    emp.operation,
+    emp.machineSAB1,
+    emp.machineSAB2,
+    emp.machineSAB3,
+    emp.inspection,
+  ].some((s) => Number(s) === selectedSkillLevel.value);
+})
 };
 
 const fetchData = async () => {
@@ -471,6 +474,10 @@ watch(
   () => [selectedProcess.value, selectedWorkDate.value],
   () => fetchData()
 );
+
+watch(selectedSkillLevel, () => {
+  computeRecommendations();
+});
 
 const openSelectionForm = (emp) => {
   if (!canSelectForThisProcess.value) {
@@ -525,7 +532,6 @@ const saveAssignment = async () => {
           payload.FromProcess || "?"
         } อนุมัติ)`
       );
-      // ✅ แจ้งหัวหน้า FromProcess พร้อมส่ง fromBiz/fromProcess
       await axios
         .post("http://localhost:5000/api/Assignment/notify", {
           empID: payload.EmpID,
@@ -666,29 +672,6 @@ onMounted(() => {
   height: 18px;
   filter: invert(1);
 }
-.auto-assign-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #16a34a, #15803d);
-  color: white;
-  border: none;
-  border-radius: 25px;
-  padding: 6px 16px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 16px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  transition: background 0.3s, transform 0.2s;
-}
-.auto-assign-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #15803d, #166534);
-  transform: scale(1.05);
-}
-.auto-assign-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 .auto-result-box {
   border-radius: 8px;
   padding: 10px 14px;
@@ -706,8 +689,8 @@ onMounted(() => {
   color: #92400e;
 }
 .table-wrapper {
-  max-height: 500px;     /* 👈 กำหนดความสูง */
-  overflow: auto;        /* 👈 scroll ทั้ง x และ y */
+  max-height: 500px;
+  overflow: auto;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
 }
@@ -773,7 +756,7 @@ tr:not(.row-highlight):not(.row-pending):not(.row-active-assigned):hover {
 }
 .skill-td {
   padding: 0 !important;
-  height: 1px; /* trick ให้ child stretch เต็ม */
+  height: 1px;
 }
 .cell-level-0,
 .cell-level-1,
@@ -784,7 +767,7 @@ tr:not(.row-highlight):not(.row-pending):not(.row-active-assigned):hover {
   justify-content: center;
   width: 100%;
   height: 100%;
-  min-height: 38px; /* ความสูงขั้นต่ำให้เท่ากันทุกช่อง */
+  min-height: 38px;
   font-size: 12px;
   font-weight: 600;
   text-align: center;
@@ -844,12 +827,11 @@ button[disabled] {
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
-  align-items: center; /* ✅ จัดกึ่งกลางแนวตั้ง */
+  align-items: center;
   z-index: 1000;
-  padding: 20px; /* ✅ เพิ่ม padding กันไม่ให้ชิดขอบ */
+  padding: 20px;
   box-sizing: border-box;
 }
-
 .modal-content {
   background: white;
   padding: 28px;
@@ -860,16 +842,15 @@ button[disabled] {
   max-height: 90vh;
   overflow-y: auto;
   animation: fadeIn 0.2s ease-out;
-  position: relative; /* ✅ เพิ่มบรรทัดนี้ */
+  position: relative;
 }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 16px;
-  flex-wrap: wrap; /* กันจอล้น */
+  flex-wrap: wrap;
 }
-
 .btn-confirm {
   background: #16a34a;
   color: white;
@@ -879,11 +860,9 @@ button[disabled] {
   cursor: pointer;
   font-weight: bold;
 }
-
 .btn-confirm:hover {
   background: #15803d;
 }
-
 .btn-cancel {
   background: red;
   color: white;
@@ -893,7 +872,6 @@ button[disabled] {
   cursor: pointer;
   font-weight: bold;
 }
-
 .btn-cancel:hover {
   background: #890808;
 }
@@ -921,14 +899,102 @@ button[disabled] {
   border-color: #3b82f6;
   outline: none;
 }
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+.step .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1d5db;
+  flex-shrink: 0;
+}
+.step.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+.step.active .dot {
+  background: #1D9E75;
+}
+.step.done {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.step.done .dot {
+  background: #38bdf8;
+}
+.step-arrow {
+  color: #9ca3af;
+  font-size: 16px;
+}
+.empty-prompt {
+  text-align: center;
+  padding: 32px 16px;
+  color: #6b7280;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 12px;
+  background: #fafafa;
+}
+.prompt-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+  animation: bounce 1.2s infinite;
+}
+
+.legend-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1.5px solid #d1d5db;
+  background: #f3f4f6;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  color: #374151;
+}
+
+.legend-btn:hover {
+  transform: scale(1.05);
+}
+
+/* active สี */
+.active-0 { background: #d1d5db; color:#111; }
+.active-1 { background: #ef4444; color:#fff; }
+.active-2 { background: #eab308; color:#fff; }
+.active-3 { background: #16a34a; color:#fff; }
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.dot-0 { background:#d1d5db; }
+.dot-1 { background:#ef4444; }
+.dot-2 { background:#eab308; }
+.dot-3 { background:#16a34a; }
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 </style>

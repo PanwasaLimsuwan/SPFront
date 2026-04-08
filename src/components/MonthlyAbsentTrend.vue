@@ -49,54 +49,72 @@ const fetchAbsentData = async () => {
         biz:        props.filters?.biz        !== 'ALL' ? props.filters.biz        : undefined,
         process:    props.filters?.process    !== 'ALL' ? props.filters.process    : undefined,
         status: 'Absent',
-        year:   selectedYear.value,
-        month:  selectedMonth.value,
+        year: selectedYear.value,
+        month: selectedMonth.value,
       },
     });
 
     const records = res.data || [];
-    console.log('📦 Absent records:', records.length, 'for', selectedYear.value, selectedMonth.value);
 
-    // นับ absent ต่อคน
+    // 🔹 นับจำนวนวันขาดงานต่อคน
     const counts = {};
     records.forEach(emp => {
       const key = emp.empID;
-      if (!counts[key]) counts[key] = { name: `${emp.firstName} ${emp.lastName}`, count: 0 };
+      if (!counts[key]) {
+        counts[key] = {
+          name: `${emp.firstName} ${emp.lastName}`,
+          count: 0
+        };
+      }
       counts[key].count++;
     });
 
-    const summary = Object.values(counts).sort((a, b) => b.count - a.count);
+    const summary = Object.values(counts)
+      .sort((a, b) => b.count - a.count);
+
     hasData.value = summary.length > 0;
-
     loading.value = false;
-    await nextTick();
-    await nextTick();
 
-    if (!hasData.value) return;
+    await nextTick();
 
     const el = document.getElementById('monthly-absent-summary');
-    if (!el) {
-      console.error('❌ #monthly-absent-summary not found in DOM');
-      return;
-    }
+    if (!el || !hasData.value) return;
 
-    Plotly.newPlot(el, [{
+    const data = [{
       x: summary.map(i => i.count),
       y: summary.map(i => i.name),
       type: 'bar',
       orientation: 'h',
-      marker: { color: '#f44336' },
-      text: summary.map(i => String(i.count)),
+      marker: {
+        color: '#ef4444' // 🔥 แดงนุ่มขึ้น
+      },
+      text: summary.map(i => `${i.count} วัน`),
       textposition: 'outside',
-    }], {
-      title: `Absent - ${months[selectedMonth.value - 1]} ${selectedYear.value}`,
-      xaxis: { title: 'Days Absent', dtick: 1 },
-      yaxis: { automargin: true, autorange: 'reversed' },
-      margin: { l: 150, r: 60, t: 50, b: 50 },
-      height: Math.max(300, summary.length * 30 + 100),
-      paper_bgcolor: '#fff',
-      plot_bgcolor: '#f9f9f9',
-    }, { displayModeBar: false });
+      hovertemplate: '<b>%{y}</b><br>ขาดงาน: %{x} วัน<extra></extra>',
+    }];
+
+    const layout = {
+      title: {
+        text: `จำนวนวันขาดงานรายบุคคล (${months[selectedMonth.value - 1]} ${selectedYear.value})`,
+        font: { size: 18 }
+      },
+      xaxis: {
+        title: 'จำนวนวัน (Days)',
+        dtick: 1,
+        gridcolor: '#eee'
+      },
+      yaxis: {
+        automargin: true,
+        autorange: 'reversed'
+      },
+      margin: { l: 180, r: 40, t: 60, b: 50 },
+      height: Math.max(350, summary.length * 35),
+      paper_bgcolor: '#ffffff',
+      plot_bgcolor: '#fafafa',
+    };
+
+    // 🔥 ใช้ react แทน newPlot (ลื่นกว่า)
+    Plotly.react(el, data, layout, { displayModeBar: false });
 
   } catch (err) {
     console.error('❌ Error fetching absent data:', err);

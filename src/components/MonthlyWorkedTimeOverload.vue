@@ -1,14 +1,15 @@
 <template>
   <div class="chart-wrapper">
-    <!-- ✅ ให้ element มีอยู่ตลอด แค่ซ่อนด้วย CSS -->
     <div v-show="loading" class="loading">⏳ Loading...</div>
+
     <div v-show="errorMessage && !loading" class="error-message">
       ❌ {{ errorMessage }}
     </div>
+
     <div v-show="!hasData && !loading && !errorMessage" class="no-data">
       No overload data to display
     </div>
-    <!-- ✅ element นี้มีอยู่ตลอด เพื่อให้ Plotly ใช้ได้ -->
+
     <div
       id="monthly-overload-chart"
       :style="{ display: hasData && !loading ? 'block' : 'none' }"
@@ -21,7 +22,6 @@ import { ref, onMounted, watch, nextTick } from "vue";
 import Plotly from "plotly.js";
 import axios from "axios";
 
-// ✅ รับ props filter
 const props = defineProps({
   filters: {
     type: Object,
@@ -34,186 +34,140 @@ const overloads = ref([]);
 const loading = ref(false);
 const errorMessage = ref("");
 const hasData = ref(false);
-const monthlyOverloadEmployees = {};
 
-// ✅ สร้าง params สำหรับ API
+// ✅ build params
 const buildParams = () => {
   const params = {};
 
-  if (props.filters?.division && props.filters.division !== "ALL") {
-    params.division = props.filters.division;
-  }
-  if (props.filters?.department && props.filters.department !== "ALL") {
-    params.department = props.filters.department;
-  }
-  if (props.filters?.section && props.filters.section !== "ALL") {
-    params.section = props.filters.section;
-  }
-  if (props.filters?.biz && props.filters.biz !== "ALL") {
-    params.biz = props.filters.biz;
-  }
-  if (props.filters?.process && props.filters.process !== "ALL") {
-    params.process = props.filters.process;
-  }
+  if (props.filters?.division !== "ALL") params.division = props.filters.division;
+  if (props.filters?.department !== "ALL") params.department = props.filters.department;
+  if (props.filters?.section !== "ALL") params.section = props.filters.section;
+  if (props.filters?.biz !== "ALL") params.biz = props.filters.biz;
+  if (props.filters?.process !== "ALL") params.process = props.filters.process;
 
   return params;
 };
 
+// ✅ fetch + aggregate รายเดือน
 const fetchWorkTimeData = async () => {
   try {
     loading.value = true;
     errorMessage.value = "";
     hasData.value = false;
 
-    const params = buildParams();
-    const response = await axios.get("http://localhost:5000/api/EICCControl", { params });
+    const response = await axios.get(
+      "http://localhost:5000/api/EICCControl/MonthlySummary",
+      { params: buildParams() }
+    );
 
-    if (!response.data || response.data.length === 0) {
-      errorMessage.value = "No data available from API";
+    const rawData = response.data;
+
+    if (!rawData || rawData.length === 0) {
+      errorMessage.value = "No data available";
       return;
     }
 
-    const data = response.data;
+    // 🔥 รวมข้อมูลตามเดือน (yyyy-MM)
+    // const monthlyMap = {};
 
-    // ✅ ย้ายมาประกาศในนี้แทน ล้างข้อมูลเก่าทุกครั้ง
-    const monthlyOverloadEmployees = {};
+    // rawData.forEach(d => {
+    //   const month = d.month; // ✅ ใช้ตัวนี้แทน month
 
-    data.forEach((entry) => {
-      if (!entry.weekStart) return;
-      const monthKey = entry.weekStart.substring(0, 7);
-      const empID = entry.empID;
-      const total = Number(entry.totalHours || 0) + Number(entry.totalOT || 0);
+    //   if (!month) return;
 
-      if (!monthlyOverloadEmployees[monthKey])
-        monthlyOverloadEmployees[monthKey] = {};
-      if (!monthlyOverloadEmployees[monthKey][empID])
-        monthlyOverloadEmployees[monthKey][empID] = { overloadWeeks: 0, overloadHours: 0 };
+    //   if (!monthlyMap[month]) {
+    //     monthlyMap[month] = 0;
+    //   }
 
-      if (total > 60) {
-        monthlyOverloadEmployees[monthKey][empID].overloadWeeks += 1;
-        monthlyOverloadEmployees[monthKey][empID].overloadHours += total - 60;
-      }
-    });
+    //   // ✅ เลือกใช้ overloadEmployees จะตรงโจทย์กว่า
+    //   monthlyMap[month] += d.overloadEmployees;
+    // });
 
-    // ✅ สรุปรายเดือน
-    const monthlyOverload = {};
-    for (const month in monthlyOverloadEmployees) {
-      let employeeCount = 0;
-      let overloadHours = 0;
-      for (const empID in monthlyOverloadEmployees[month]) {
-        const emp = monthlyOverloadEmployees[month][empID];
-        if (emp.overloadWeeks >= 1) {
-          employeeCount++;
-          overloadHours += emp.overloadHours;
-        }
-      }
-      monthlyOverload[month] = { employeeCount, overloadHours };
-    }
+    months.value = rawData.map(d => d.month);
+overloads.value = rawData.map(d => d.overloadEmployees);
 
-    const sortedMonths = Object.keys(monthlyOverload).sort();
-    months.value = sortedMonths;
-    overloads.value = sortedMonths.map((m) => monthlyOverload[m].employeeCount);
+    // ✅ sort เดือน
+    // const sortedMonths = Object.keys(monthlyMap).sort();
 
-    const totalOverload = overloads.value.reduce((sum, v) => sum + v, 0);
-    hasData.value = totalOverload > 0;
+    // months.value = sortedMonths;
+    // overloads.value = sortedMonths.map(m => monthlyMap[m]);
 
-    if (hasData.value) {
-      await nextTick();
-      drawChart(monthlyOverload);
-    }
+    hasData.value = overloads.value.length > 0;
+
+    await nextTick();
+    drawChart();
+
   } catch (error) {
-    errorMessage.value = `Failed to load data: ${error.message}`;
+    errorMessage.value = error.message;
   } finally {
     loading.value = false;
   }
 };
 
-const drawChart = (monthlyOverload) => {
-  const chartElement = document.getElementById("monthly-overload-chart");
-  if (!chartElement) return;
+// ✅ draw chart
+const drawChart = () => {
+  const el = document.getElementById("monthly-overload-chart");
+  if (!el) return;
 
-  const formattedMonths = months.value.map((m) => {
-    try {
-      const date = new Date(m + "-01");
-      return date.toLocaleString("en-US", { month: "short", year: "numeric" });
-    } catch { return m; }
+  // ✅ format เดือน
+  const formattedMonths = months.value.map(m => {
+    const date = new Date(m + "-01"); // m = yyyy-MM
+    return date.toLocaleString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
   });
 
-  const employeeCounts = months.value.map(m => monthlyOverload[m].employeeCount);
-
-  // ✅ สีแดงอย่างเดียว ความเข้มตามจำนวน
-  const colors = employeeCounts.map(count => {
-    if (count >= 100) return "#7f0000";
-    if (count >= 50)  return "#b71c1c";
-    if (count >= 10)  return "#c62828";
-    if (count >= 6)   return "#e53935";
-    return "#ef5350";
-  });
-
-  const hoverText = months.value.map(m => {
-    const d = monthlyOverload[m];
-    const avg = d.employeeCount > 0
-      ? (d.overloadHours / d.employeeCount).toFixed(1) : 0;
-    return `เดือน: ${m}<br>` +
-           `พนักงานที่มีสัปดาห์เกิน 60h: ${d.employeeCount} คน<br>` +
-           `ชั่วโมงที่เกินรวม: ${d.overloadHours.toFixed(1)} h<br>` +
-           `เฉลี่ย: ${avg} h/คน`;
-  });
+  const values = overloads.value;
 
   const trace = {
     x: formattedMonths,
-    y: employeeCounts,
+    y: values,
     type: "bar",
-    marker: { color: colors },
-    text: employeeCounts.map(v => `${v} คน`),
+    text: values.map(v => `${v} คน`),
     textposition: "auto",
-    hovertext: hoverText,
-    hoverinfo: "text",
-    width: 0.5, // ✅ แท่งแคบลง
+    marker: {
+      color: values.map(v =>
+        v >= 100 ? "#7f0000" :
+        v >= 50  ? "#b71c1c" :
+        v >= 10  ? "#e53935" :
+                   "#ef5350"
+      ),
+    },
+    hovertemplate: "<b>%{x}</b><br>Overload: %{y} คน<extra></extra>"
   };
 
-  // ✅ คำนวณความกว้างกราฟตามจำนวนเดือน (อย่างน้อย 600px)
-  const chartWidth = Math.max(600, months.value.length * 100);
-
   const layout = {
-    title: "Monthly Overload — พนักงานที่ทำงานเกิน 60h/สัปดาห์",
-    width: chartWidth, // ✅ กว้างตามข้อมูล
-    xaxis: { title: "Month", tickangle: -45, automargin: true },
-    yaxis: { title: "จำนวนพนักงาน (คน)", rangemode: "tozero", dtick: 10 },
-    margin: { l: 60, r: 30, t: 60, b: 120 },
+    title: "Monthly Worktime Overload",
+    xaxis: { title: "Month", tickangle: -45 },
+    yaxis: { title: "จำนวนพนักงาน (คน)", rangemode: "tozero" },
+    margin: { l: 60, r: 30, t: 60, b: 100 },
     plot_bgcolor: "#f9f9f9",
     paper_bgcolor: "#fff",
     height: 450,
-    showlegend: false,
   };
 
-  Plotly.react("monthly-overload-chart", [trace], layout, { responsive: false }, {
-  displayModeBar: false
-}); // ✅ false เพื่อให้ scroll ได้
+  Plotly.react(el, [trace], layout, {
+    displayModeBar: false
+  });
 };
 
-// ✅ Lifecycle
-onMounted(() => {
-  console.log("Component mounted");
-  console.log("Initial filters:", props.filters);
-  fetchWorkTimeData();
-});
+// lifecycle
+onMounted(fetchWorkTimeData);
 
-// ✅ watch filter → reload data + update chart
-watch(
-  () => props.filters,
-  async () => {
-    console.log("Filters changed:", props.filters);
-    await fetchWorkTimeData();
-  },
-  { deep: true }
-);
+watch(() => props.filters, fetchWorkTimeData, { deep: true });
 </script>
 
 <style scoped>
-#monthly-overload-chart {
+.chart-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
   width: 100%;
-  height: 100%;
+}
+
+#monthly-overload-chart {
+  min-width: 600px;
+  height: 450px;
 }
 
 .loading {
@@ -236,16 +190,5 @@ watch(
   color: #999;
   font-size: 16px;
   padding: 150px 0;
-}
-
-.chart-wrapper {
-  overflow-x: auto;  /* ✅ เพิ่ม scroll แนวนอน */
-  overflow-y: hidden;
-  width: 100%;
-}
-
-#monthly-overload-chart {
-  min-width: 600px;  /* ✅ กำหนด min-width */
-  height: 450px;
 }
 </style>

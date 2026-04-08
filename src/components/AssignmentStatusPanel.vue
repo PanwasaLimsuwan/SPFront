@@ -390,17 +390,17 @@ onMounted(() => {
   justify-content: space-between; flex-wrap: wrap; gap: 8px;
   margin-bottom: 10px;
 }
-.header-top h3 { margin: 0; font-size: 15px; }
+.header-top h3 { margin: 0; font-size: 24px; }
 
 .user-scope {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .scope-label {
-  font-size: 12px; color: #374151;
+  font-size: 16px; color: #374151;
   background: #f3f4f6; padding: 3px 10px; border-radius: 999px;
 }
 .scope-role {
-  font-size: 11px; font-weight: bold;
+  font-size: 16px; font-weight: bold;
   padding: 2px 8px; border-radius: 999px;
 }
 .role-admin  { background: #e0e7ff; color: #3730a3; }
@@ -409,7 +409,7 @@ onMounted(() => {
 .tab-group { display: flex; gap: 6px; flex-wrap: wrap; }
 .tab-btn {
   padding: 5px 12px; border-radius: 20px; border: 1px solid #d1d5db;
-  background: #f9fafb; cursor: pointer; font-size: 13px;
+  background: #f9fafb; color: #111827; cursor: pointer; font-size: 18px;
   display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;
 }
 .tab-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
@@ -417,7 +417,7 @@ onMounted(() => {
 .badge {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 20px; height: 20px; border-radius: 10px;
-  font-size: 11px; font-weight: bold; padding: 0 5px;
+  font-size: 16px; font-weight: bold; padding: 0 5px;
 }
 .badge.Pending   { background: #fef3c7; color: #92400e; }
 .badge.Active    { background: #d1fae5; color: #065f46; }
@@ -425,12 +425,14 @@ onMounted(() => {
 .badge.Returning     { background: #fce7f3; color: #9d174d; }
 .tab-btn.active .badge { background: rgba(255,255,255,0.3); color: white; }
 
-.empty-state { text-align: center; padding: 24px; color: #6b7280; }
+/* .empty-state { text-align: center; padding: 24px; color: #6b7280; } */
 .table-wrapper { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 16px; }
 th, td { padding: 8px 10px; border: 1px solid #e5e7eb; text-align: center; }
 th { background: #f3f4f6; font-weight: 600; }
-.empty { text-align: center; padding: 20px; color: #9ca3af; }
+.empty { color: #374151; font-weight: 500; }
+.empty-state { color: #111827; font-weight: 500; }
+.scope-label { color: #111827; font-weight: 600; }
 
 /* ✅ แถวที่ approve ได้ */
 .row-mine { background: #fafffe; }
@@ -439,7 +441,7 @@ tr:not(.row-mine):hover { background: #f9fafb; }
 
 .status-badge {
   display: inline-block; padding: 3px 10px;
-  border-radius: 12px; font-size: 12px; font-weight: 600;
+  border-radius: 12px; font-size: 18px; font-weight: 600;
 }
 .status-badge.pending   { background: #fef3c7; color: #92400e; }
 .status-badge.active    { background: #d1fae5; color: #065f46; }
@@ -452,7 +454,7 @@ tr:not(.row-mine):hover { background: #f9fafb; }
 
 .btn-approve, .btn-complete, .btn-cancel {
   border: none; border-radius: 6px; padding: 4px 8px;
-  cursor: pointer; font-size: 12px;
+  cursor: pointer; font-size: 16px;
 }
 .btn-approve  { background: #d1fae5; color: #065f46; }
 .btn-complete { background: #e0e7ff; color: #3730a3; }

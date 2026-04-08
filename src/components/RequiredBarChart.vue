@@ -9,15 +9,38 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from "vue";
+import { ref, onMounted, watch, nextTick, inject, computed } from "vue";
 import axios from "axios";
 import Plotly from "plotly.js";
+import jwt_decode from "jwt-decode";
 
 const props = defineProps({ filters: Object });
 const emit = defineEmits(["barClick"]);
 
 const rawData = ref([]);
 const workDate = ref(null);
+const selectedProcessFromParent = inject("selectedProcess", ref(null));
+
+// ✅ JWT claims สำหรับเช็ค permission
+const currentUser = computed(() => {
+  try {
+    return jwt_decode(localStorage.getItem("token") || "");
+  } catch {
+    return {};
+  }
+});
+const userRole = computed(() => currentUser.value?.role ?? "");
+const userBizJwt = computed(() => currentUser.value?.biz ?? "");
+const userProcessJwt = computed(() => currentUser.value?.process ?? "");
+const isAdmin = computed(() => userRole.value === "Admin");
+
+// ✅ ฟังก์ชันเช็คว่า user มีสิทธิ์ process นี้ไหม
+const canAccessProcess = (biz, process) => {
+  if (isAdmin.value) return true;
+  const bizOk = !userBizJwt.value || biz === userBizJwt.value;
+  const procOk = !userProcessJwt.value || process === userProcessJwt.value;
+  return bizOk && procOk;
+};
 
 const formatDate = (date) =>
   date ? new Date(date).toLocaleDateString() : "";
@@ -26,38 +49,64 @@ const drawChart = () => {
   if (!rawData.value.length) return;
 
   const processes = [...new Set(rawData.value.map((d) => d.process))];
-
-  const aggregate = (process) => {
-    const items = rawData.value.filter((d) => d.process === process);
-    return Math.max(...items.map((i) => i.headcountShortage || 0), 0);
-  };
-
-  // ✅ FIX: กรองเฉพาะ process ที่ยังขาดจริง (headcountShortage > 0)
-  const shortageProcesses = processes.filter((p) => aggregate(p) > 0);
+  const shortageProcesses = processes.filter((p) => {
+    const items = rawData.value.filter((d) => d.process === p);
+    return Math.max(...items.map((i) => i.headcountShortage || 0), 0) > 0;
+  });
 
   if (shortageProcesses.length === 0) {
     Plotly.purge("required-bar-chart");
     return;
   }
 
+  const selectedProc = selectedProcessFromParent?.value ?? null;
+
+  // ✅ สีแท่ง: grey ถ้าไม่มีสิทธิ์, เขียวถ้า selected, แดงปกติ
+  const colors = shortageProcesses.map((p) => {
+    const item = rawData.value.find((d) => d.process === p);
+    const biz = item?.biz ?? "";
+    if (!canAccessProcess(biz, p)) return "#d1d5db"; // grey = no permission
+    if (p === selectedProc) return "#0F6E56";         // selected = green
+    return "#ef4444";                                  // default = red
+  });
+
+  // ✅ hovertemplate: แสดง 🔒 warning ถ้าไม่มีสิทธิ์
+  const hoverTemplates = shortageProcesses.map((p) => {
+    const item = rawData.value.find((d) => d.process === p);
+    const biz = item?.biz ?? "";
+    if (!canAccessProcess(biz, p)) {
+      return `<b>%{x}</b><br>🔒 ไม่มีสิทธิ์ Assign Process นี้<br><span style='color:#9ca3af'>คุณดูแล: ${userBizJwt.value || "?"}/${userProcessJwt.value || "?"}</span><extra></extra>`;
+    }
+    return `<b>%{x}</b><br>ขาด <b>%{y}</b> คน<extra></extra>`;
+  });
+
   const traces = [
     {
       x: shortageProcesses,
-      y: shortageProcesses.map((p) => aggregate(p)),
+      y: shortageProcesses.map((p) => {
+        const items = rawData.value.filter((d) => d.process === p);
+        return Math.max(...items.map((i) => i.headcountShortage || 0), 0);
+      }),
       type: "bar",
-      text: shortageProcesses.map((p) => String(aggregate(p))),
+      text: shortageProcesses.map((p) => {
+        const items = rawData.value.filter((d) => d.process === p);
+        return String(Math.max(...items.map((i) => i.headcountShortage || 0), 0));
+      }),
       textposition: "auto",
+      marker: { color: colors },
+      hovertemplate: hoverTemplates,
       name: "Headcount",
     },
   ];
 
   const layout = {
     title: { text: "⚠️ Process ที่ขาดแคลนคนวันนี้", font: { size: 16 } },
-    height: 450,
+    height: 300,
     xaxis: { title: "Process", tickangle: -45, automargin: true },
     yaxis: { title: "จำนวนคนที่ขาด (คน)", dtick: 1, rangemode: "tozero" },
-    colorway: ["#ef4444"],
-    margin: { b: 120 },
+    margin: { b: 80, t: 40 },
+    plot_bgcolor: "transparent",
+    paper_bgcolor: "transparent",
   };
 
   Plotly.react("required-bar-chart", traces, layout, { responsive: true }).then(() => {
@@ -68,8 +117,18 @@ const drawChart = () => {
       const process = event.points[0].x;
       const items = rawData.value.filter((d) => d.process === process);
       if (!items.length) return;
-      const headcount = Math.max(...items.map((i) => i.headcountShortage || 0), 0);
+
       const biz = items[0].biz ?? "";
+
+      // ✅ block ทันทีถ้าไม่มีสิทธิ์ — ไม่ต้องรอให้ไปถึง EmployeeRecommendations
+      if (!canAccessProcess(biz, process)) {
+        alert(
+          `🔒 ไม่มีสิทธิ์ Assign Process นี้\n\nคุณดูแล: ${userBizJwt.value || "?"}/${userProcessJwt.value || "?"}\nProcess ที่กด: ${biz}/${process}`
+        );
+        return;
+      }
+
+      const headcount = Math.max(...items.map((i) => i.headcountShortage || 0), 0);
       emit("barClick", {
         process,
         biz,
@@ -111,6 +170,7 @@ const fetchData = async () => {
 defineExpose({ refresh: fetchData });
 
 watch(() => props.filters, fetchData, { deep: true });
+watch(selectedProcessFromParent, () => drawChart());
 
 onMounted(async () => {
   await fetchData();

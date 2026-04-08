@@ -59,38 +59,69 @@
     <!-- Edit Modal เดิม ไม่แตะ -->
     <div v-if="isEditFormVisible" class="edit-form-overlay">
       <div class="edit-form-container">
+        <button class="btn-close" @click="closeEditForm">✕</button>
         <h3>Edit Employee</h3>
-        <form @submit.prevent="editEmployee">
+        <form @submit.prevent="editEmployee" class="form-grid">
+          <div class="form-group full">
           <label>EmpID:</label>
           <input type="text" v-model="editData.empID" readonly />
+</div>
+          <div class="form-group">
           <label>First Name:</label>
           <input type="text" v-model="editData.firstName" required />
+</div>
+          <div class="form-group">
           <label>Last Name:</label>
           <input type="text" v-model="editData.lastName" required />
+</div>
+          <div class="form-group full">
           <label>Email:</label>
           <input type="email" v-model="editData.email" required />
+</div>
+          <div class="form-group">
           <label>Biz:</label>
           <input type="text" v-model="editData.biz" required />
+</div>
+          <div class="form-group">
           <label>PlanID:</label>
           <input type="text" v-model="editData.planID" required />
+</div>
+          <div class="form-group">
           <label>Process:</label>
           <input type="text" v-model="editData.process" required />
+</div>
+          <div class="form-group">
           <label>Section:</label>
           <input type="text" v-model="editData.section" required />
+</div>
+          <div class="form-group">
           <label>Division:</label>
           <input type="text" v-model="editData.division" required />
+</div>
+          <div class="form-group">
           <label>JobGrade:</label>
           <input type="text" v-model="editData.jobGrade" required />
+</div>
+          <div class="form-group">
           <label>Position:</label>
           <input type="text" v-model="editData.position" required />
+</div>
+          <div class="form-group">
           <label>ShiftCode:</label>
           <input type="text" v-model="editData.shiftCode" required />
+</div>
+          <div class="form-group">
           <label>CostCenter:</label>
           <input type="text" v-model="editData.costCenter" required />
+</div>
+          <div class="form-group">
           <label>Department:</label>
           <input type="text" v-model="editData.department" required />
-          <button type="submit">Save Changes</button>
-          <button type="button" @click="closeEditForm">Cancel</button>
+</div>
+          <div class="form-actions full">
+    <button type="submit" class="btn-save">Save</button>
+    <button type="button" class="btn-cancel" @click="closeEditForm">Cancel</button>
+          </div>
         </form>
       </div>
     </div>
@@ -381,6 +412,83 @@ onMounted(() => {
 <style scoped>
 * { box-sizing: border-box; }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group.full {
+  grid-column: span 2;
+}
+
+/* label */
+.form-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #718096;
+  margin-bottom: 4px;
+}
+
+/* input */
+.form-group input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
+}
+
+/* buttons */
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  grid-column: span 2;
+}
+
+.btn-save {
+  flex: 1;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 15px;   /* เพิ่ม */
+  border: none;
+  cursor: pointer;
+}
+
+.btn-save:hover {
+  transform: translateY(-1px);
+}
+
+.btn-cancel {
+  flex: 1;
+  background: #edf2f7;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 15px;   /* เพิ่ม */
+  font-weight: 600;  /* เพิ่ม */
+  color: #4a5568;    /* เพิ่ม */
+  cursor: pointer;   /* เพิ่ม */
+}
+
+.btn-cancel:hover {
+  background: #e2e8f0;
+}
+
 .dashboard-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #e8edf5, #dce3ef);
@@ -512,10 +620,38 @@ button { float: none !important; margin: 0; }
 }
 
 .edit-form-container {
-  background: white; padding: 32px;
-  border-radius: 20px; width: 480px;
-  max-height: 85vh; overflow-y: auto;
+  background: white;
+  padding: 32px;
+  border-radius: 20px;
+  width: 560px;           /* ขยายนิดนึงให้ 2 col สบาย */
+  max-height: 85vh;
+  overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  position: relative;     /* เพิ่ม */
+}
+
+.btn-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+  line-height: 1;
+}
+
+.btn-close:hover {
+  background: #fee2e2;
+  color: #e53e3e;
 }
 
 .edit-form-container h3 {
@@ -537,19 +673,4 @@ button { float: none !important; margin: 0; }
 .edit-form-container input:focus { outline: none; border-color: #4299e1; }
 .edit-form-container input[readonly] { background: #f7fafc; color: #a0aec0; }
 
-.edit-form-container button[type="submit"] {
-  width: 100%; margin-top: 20px; padding: 11px;
-  background: #4299e1; color: white; border: none;
-  border-radius: 10px; font-size: 15px; font-weight: 700;
-  cursor: pointer; float: none;
-}
-.edit-form-container button[type="submit"]:hover { background: #3182ce; }
-
-.edit-form-container button[type="button"] {
-  width: 100%; margin-top: 8px; padding: 11px;
-  background: #edf2f7; color: #4a5568; border: none;
-  border-radius: 10px; font-size: 15px; font-weight: 600;
-  cursor: pointer; float: none;
-}
-.edit-form-container button[type="button"]:hover { background: #e2e8f0; }
 </style>

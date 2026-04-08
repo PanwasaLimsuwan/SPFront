@@ -3,19 +3,16 @@ import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import Plotly from 'plotly.js'
 
-// รับ filters จาก props
 const props = defineProps({
   filters: Object
 })
 
 const trainingData = ref([])
 
-// โหลดข้อมูลจาก API และกรองตามค่าที่ได้รับจาก props
 onMounted(async () => {
   await fetchTrainingData()
 })
 
-// ฟังก์ชันดึงข้อมูลจาก API
 const fetchTrainingData = async () => {
   try {
     const response = await axios.get('http://localhost:5000/api/OJTandInspectionSkill', {
@@ -28,96 +25,85 @@ const fetchTrainingData = async () => {
       }
     })
 
-    // กรองข้อมูลเฉพาะที่ active >= 2
     trainingData.value = response.data.filter(item => item.active >= 2)
-
     drawChart()
   } catch (error) {
     console.error('Error fetching training data:', error)
   }
 }
 
-// ฟังก์ชันวาดกราฟ
 const drawChart = () => {
-  const groupBy = 'process' // แสดงแค่ process
   const grouped = {}
-
   trainingData.value.forEach(item => {
-    const key = item[groupBy] || 'Unknown'
+    const key = item.process || 'Unknown'
     grouped[key] = (grouped[key] || 0) + 1
   })
 
-  const xLabels = Object.keys(grouped)
-  const yValues = Object.values(grouped)
+  const sorted = Object.entries(grouped).sort((a, b) => b[1] - a[1])
+  const xLabels = sorted.map(([k]) => k)
+  const yValues = sorted.map(([, v]) => v)
+  // const xLabels = Object.keys(grouped)
+  // const yValues = Object.values(grouped)
 
-  // กำหนดสีตามชื่อ process
   const colorMapping = {
-    'ASSY': '#FF5733',    // สีแดง
-    'MOKU': '#33FF57',    // สีเขียว
-    'CSAT': '#3357FF',    // สีน้ำเงิน
-    'JUNB': '#FFC300',    // สีเหลือง
-    'BMS': '#8E44AD',     // สีม่วง
-    'BURN': '#FF6347',    // สีมะเขือเทศ
-    'CSAT3': '#F39C12',   // สีทอง
-    'PCLN': '#1ABC9C',    // สีเขียวมิ้นท์
-    'PA': '#D35400',      // สีส้ม
-    'JIK': '#2980B9',     // สีฟ้า
-    'MPK': '#2C3E50',     // สีน้ำเงินเข้ม
-    'KEN': '#7F8C8D',     // สีเทาควันบุหรี่
-    'PK': '#34495E',      // สีน้ำเงินกรมท่า
-    'PCL': '#16A085',     // สีเขียวมรกต
-    'ELU1': '#2ECC71',    // สีเขียวสด
-    'AG': '#8E44AD',      // สีม่วง
-    'HTH': '#F1C40F',     // สีทองเหลือง
-    'TKA': '#9B59B6',     // สีม่วงอ่อน
-    'EGC': '#F39C12',     // สีทอง
-    'LBL': '#1F618D',     // สีน้ำเงินเข้ม
-    'KOC': '#2E4053',     // สีเทาเข้ม
-    'KSP': '#A569BD',     // สีม่วง
-    'KDU': '#F4D03F',     // สีเหลือง
-    'INF': '#7D3C98',     // สีม่วงเข้ม
-    'PF': '#FF7F50',      // สีปะการัง
-    'ELU2': '#F8C471',    // สีทองอ่อน
-    'FC': '#85C1AE',      // สีเขียวฟ้า
-  };
+    'ASSY': '#FF5733', 'MOKU': '#33FF57', 'CSAT': '#3357FF',
+    'JUNB': '#FFC300', 'BMS': '#8E44AD', 'BURN': '#FF6347',
+    'CSAT3': '#F39C12', 'PCLN': '#1ABC9C', 'PA': '#D35400',
+    'JIK': '#2980B9', 'MPK': '#2C3E50', 'KEN': '#7F8C8D',
+    'PK': '#34495E', 'PCL': '#16A085', 'ELU1': '#2ECC71',
+    'AG': '#8E44AD', 'HTH': '#F1C40F', 'TKA': '#9B59B6',
+    'EGC': '#F39C12', 'LBL': '#1F618D', 'KOC': '#2E4053',
+    'KSP': '#A569BD', 'KDU': '#F4D03F', 'INF': '#7D3C98',
+    'PF': '#FF7F50', 'ELU2': '#F8C471', 'FC': '#85C1AE',
+  }
 
-  // ใช้สีตาม process
-  const colors = xLabels.map(name => colorMapping[name] || '#4caf50');
+  const colors = xLabels.map(name => colorMapping[name] || '#4caf50')
 
-  const chartData = [
-    {
-      x: xLabels,
-      y: yValues,
-      type: 'bar',
-      marker: {
-        color: colors,
-      },
-      text: yValues.map(v => `${v} คน`),
-      textposition: 'auto',
+  // ✅ คำนวณความกว้างกราฟตามจำนวน process (อย่างน้อย 900px)
+  const chartWidth = Math.max(900, xLabels.length * 65)
+
+  const chartData = [{
+    x: xLabels,
+    y: yValues,
+    type: 'bar',
+    marker: {
+      color: colors,
+      line: { color: 'rgba(0,0,0,0.1)', width: 1 }
     },
-  ]
+    text: yValues.map(v => `${v} คน`),  // ✅ แสดงทุกแท่ง ไม่มีเงื่อนไข
+    textposition: 'outside',
+    textfont: { size: 12, color: '#333' },
+    width: 0.6,
+  }]
 
   const layout = {
-    title: 'Training Employee',
+    title: { text: 'Training Employee', font: { size: 18 } },
+    width: chartWidth,  // ✅ กว้างตามจำนวน process
     xaxis: {
-      title: 'Process',
-      tickangle: -30,
+      title: { text: 'Process', standoff: 10 },
+      tickangle: -45,   // ✅ หมุน label ให้ไม่ทับกัน
+      tickfont: { size: 12 },
+      automargin: true,
     },
     yaxis: {
-      title: 'จำนวนผู้ผ่านการอบรม',
+      title: 'จำนวนพนักงาน',
+      tickfont: { size: 12 },
+      range: [0, Math.max(...yValues) * 1.35],  // ✅ เผื่อที่ว่างด้านบน label
+      rangemode: 'tozero',
     },
-    height: 450,
+    height: 480,
     paper_bgcolor: 'rgba(0,0,0,0)',
     plot_bgcolor: '#fff',
-    margin: { t: 50, l: 50, r: 30, b: 80 },
+    margin: { t: 60, l: 65, r: 30, b: 110 },
+    bargap: 0.2,
   }
 
   Plotly.newPlot('training-chart', chartData, layout, {
-  displayModeBar: false
-})
+    displayModeBar: false,
+    responsive: false,  // ✅ ปิด responsive เพื่อให้ scroll ทำงานได้
+  })
 }
 
-// Watch เพื่อรีเฟรชข้อมูลเมื่อ filters เปลี่ยน
 watch(() => props.filters, async () => {
   await fetchTrainingData()
 }, { deep: true })
@@ -125,7 +111,10 @@ watch(() => props.filters, async () => {
 
 <template>
   <div class="training-employee-container">
-    <div id="training-chart"></div>
+    <!-- ✅ Wrapper สำหรับ scroll -->
+    <div class="chart-wrapper">
+      <div id="training-chart"></div>
+    </div>
   </div>
 </template>
 
@@ -133,9 +122,18 @@ watch(() => props.filters, async () => {
 .training-employee-container {
   width: 100%;
   height: 100%;
+  padding: 10px;
 }
-#training-chart {
+
+/* ✅ scroll ซ้าย-ขวาได้เมื่อกราฟกว้างเกิน */
+.chart-wrapper {
   width: 100%;
-  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+#training-chart {
+  min-width: 900px;
+  height: 480px;
 }
 </style>

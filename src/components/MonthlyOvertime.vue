@@ -59,77 +59,92 @@ const fetchWorkTimeData = async () => {
 };
 
 // ✅ process worktime data by month (ใช้ monthYear ตรง ๆ)
-const aggregateWorkTimeByMonth = () => {
-  const workTimeByMonth = {};
+// const aggregateWorkTimeByMonth = () => {
+//   const workTimeByMonth = {};
 
-  workTimeData.value.forEach(entry => {
-    const monthKey = entry.month; // e.g. "2025-W33"
+//   workTimeData.value.forEach(entry => {
+//     const monthKey = entry.month; // e.g. "2025-W33"
 
-    // ✅ แปลง "2025-W33" → หาว่า week นั้นอยู่เดือนไหน
-    const [yearStr, weekStr] = monthKey.split('-W');
-    const year = parseInt(yearStr);
-    const week = parseInt(weekStr);
+//     // ✅ แปลง "2025-W33" → หาว่า week นั้นอยู่เดือนไหน
+//     const [yearStr, weekStr] = monthKey.split('-W');
+//     const year = parseInt(yearStr);
+//     const week = parseInt(weekStr);
 
-    // คำนวณวันแรก (Monday) ของ week นั้น
-    const jan4 = new Date(year, 0, 4);
-    const startOfWeek1 = new Date(jan4);
-    startOfWeek1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
-    const targetDate = new Date(startOfWeek1);
-    targetDate.setDate(startOfWeek1.getDate() + (week - 1) * 7);
+//     // คำนวณวันแรก (Monday) ของ week นั้น
+//     const jan4 = new Date(year, 0, 4);
+//     const startOfWeek1 = new Date(jan4);
+//     startOfWeek1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+//     const targetDate = new Date(startOfWeek1);
+//     targetDate.setDate(startOfWeek1.getDate() + (week - 1) * 7);
 
-    // ✅ ใช้ "YYYY-MM" เป็น key เพื่อ group by เดือน
-    const groupKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+//     // ✅ ใช้ "YYYY-MM" เป็น key เพื่อ group by เดือน
+//     const groupKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 
-    if (!workTimeByMonth[groupKey]) {
-      workTimeByMonth[groupKey] = { otHours: 0 };
-    }
+//     if (!workTimeByMonth[groupKey]) {
+//       workTimeByMonth[groupKey] = { otHours: 0 };
+//     }
 
-    workTimeByMonth[groupKey].otHours += entry.totalOT || 0;
-  });
+//     workTimeByMonth[groupKey].otHours += entry.totalOT || 0;
+//   });
 
-  const sortedMonths = Object.keys(workTimeByMonth).sort(); // sort by "YYYY-MM"
+//   const sortedMonths = Object.keys(workTimeByMonth).sort(); // sort by "YYYY-MM"
 
-  // ✅ format เป็น "Jan 2025", "Feb 2025", ...
-  const formattedMonths = sortedMonths.map(m => {
-    const [y, mo] = m.split('-');
-    return new Date(parseInt(y), parseInt(mo) - 1, 1)
-      .toLocaleString('en-US', { month: 'short', year: 'numeric' });
-  });
+//   // ✅ format เป็น "Jan 2025", "Feb 2025", ...
+//   const formattedMonths = sortedMonths.map(m => {
+//     const [y, mo] = m.split('-');
+//     return new Date(parseInt(y), parseInt(mo) - 1, 1)
+//       .toLocaleString('en-US', { month: 'short', year: 'numeric' });
+//   });
 
-  return { sortedMonths, formattedMonths, workTimeByMonth };
-};
+//   return { sortedMonths, formattedMonths, workTimeByMonth };
+// };
 
 // ✅ draw chart
 const drawChart = async () => {
   if (!workTimeData.value.length) {
-    console.warn('⚠️ drawChart: No work time data found.');
     Plotly.purge('monthly-overtime');
     return;
   }
 
-  await nextTick(); // ✅ รอ DOM
+  await nextTick();
 
-  const { sortedMonths, formattedMonths, workTimeByMonth } = aggregateWorkTimeByMonth();
-  const otHours = sortedMonths.map(month => workTimeByMonth[month].otHours);
+  // ✅ ใช้ข้อมูลตรง ๆ จาก backend
+  const sortedData = [...workTimeData.value].sort((a, b) =>
+    a.month.localeCompare(b.month)
+  );
 
-  console.log('📊 Chart Data:', { sortedMonths, formattedMonths, otHours });
+  const formattedMonths = sortedData.map(d => {
+    const date = new Date(d.month + "-01");
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      year: 'numeric'
+    });
+  });
+
+  const values = sortedData.map(d => d.overloadEmployees);
 
   const chartData = [
     {
       x: formattedMonths,
-      y: otHours,
-      name: 'OT Hours',
+      y: values,
+      name: 'Overload Employees',
       type: 'bar',
+      text: values.map(v => `${v} คน`),
+      textposition: 'auto',
       marker: {
-        color: otHours.map(h => h >= 60 ? '#f44336' : h >= 30 ? '#ffc107' : '#4caf50'),
-      },
-    },
+        color: values.map(v =>
+          v >= 100 ? '#b71c1c' :
+          v >= 50  ? '#e53935' :
+                     '#ef5350'
+        )
+      }
+    }
   ];
 
   const layout = {
-    title: 'Monthly Overtime',
+    title: 'Monthly Worktime Overload',
     xaxis: { title: 'Month' },
-    yaxis: { title: 'Total OT Hours', rangemode: 'tozero' },
+    yaxis: { title: 'จำนวนพนักงาน (คน)', rangemode: 'tozero' },
     paper_bgcolor: '#fff',
     plot_bgcolor: '#f9f9f9',
     height: 400,
@@ -139,8 +154,10 @@ const drawChart = async () => {
   Plotly.newPlot('monthly-overtime', chartData, layout, {
   displayModeBar: false
 }).then(() => {
-    document.getElementById('monthly-overtime').addEventListener('plotly_click', onBarClick);
-  });
+  document
+    .getElementById('monthly-overtime')
+    .on('plotly_click', onBarClick);
+});
 };
 
 // ✅ click event emit filter
