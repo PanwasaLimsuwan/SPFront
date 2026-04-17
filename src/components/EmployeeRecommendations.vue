@@ -1,6 +1,5 @@
 <template>
   <div class="employee-recommendations">
-
     <!-- ✅ Stepper -->
     <div class="stepper">
       <span class="step" :class="{ done: selectedProcess }">
@@ -11,9 +10,7 @@
         <span class="dot"></span> ดูพนักงาน
       </span>
       <span class="step-arrow">›</span>
-      <span class="step">
-        <span class="dot"></span> ยืนยัน Assign
-      </span>
+      <span class="step"> <span class="dot"></span> ยืนยัน Assign </span>
     </div>
 
     <div v-if="!selectedProcess">
@@ -48,10 +45,10 @@
       <strong>{{ selectedBiz }} / {{ selectedProcess }}</strong> ได้
     </div>
 
-    <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
       <button class="refresh-skill-btn" @click="resetFilter" title="รีเซต">
         <img src="refresh.png" alt="Refresh" class="icon" />
-        <span>รีเซต</span>
+        <span>Refresh</span>
       </button>
     </div>
 
@@ -171,34 +168,75 @@
               <small style="color: #999"> / 60h</small>
             </td>
             <td class="skill-td">
-              <span :class="skillCellClass(emp.material)">{{
-                getSkillLabel(emp.material)
-              }}</span>
+              <span
+                v-if="
+                  selectedSkillLevel === null ||
+                  emp.material === selectedSkillLevel
+                "
+                :class="skillCellClass(emp.material)"
+                >{{ getSkillLabel(emp.material) }}</span
+              >
+              <span v-else class="cell-dimmed">—</span>
             </td>
+
             <td class="skill-td">
-              <span :class="skillCellClass(emp.operation)">{{
-                getSkillLabel(emp.operation)
-              }}</span>
+              <span
+                v-if="
+                  selectedSkillLevel === null ||
+                  emp.operation === selectedSkillLevel
+                "
+                :class="skillCellClass(emp.operation)"
+                >{{ getSkillLabel(emp.operation) }}</span
+              >
+              <span v-else class="cell-dimmed">—</span>
             </td>
+
             <td class="skill-td">
-              <span :class="skillCellClass(emp.machineSAB1)">{{
-                getSkillLabel(emp.machineSAB1)
-              }}</span>
+              <span
+                v-if="
+                  selectedSkillLevel === null ||
+                  emp.machineSAB1 === selectedSkillLevel
+                "
+                :class="skillCellClass(emp.machineSAB1)"
+                >{{ getSkillLabel(emp.machineSAB1) }}</span
+              >
+              <span v-else class="cell-dimmed">—</span>
             </td>
+
             <td class="skill-td">
-              <span :class="skillCellClass(emp.machineSAB2)">{{
-                getSkillLabel(emp.machineSAB2)
-              }}</span>
+              <span
+                v-if="
+                  selectedSkillLevel === null ||
+                  emp.machineSAB2 === selectedSkillLevel
+                "
+                :class="skillCellClass(emp.machineSAB2)"
+                >{{ getSkillLabel(emp.machineSAB2) }}</span
+              >
+              <span v-else class="cell-dimmed">—</span>
             </td>
+
             <td class="skill-td">
-              <span :class="skillCellClass(emp.machineSAB3)">{{
-                getSkillLabel(emp.machineSAB3)
-              }}</span>
+              <span
+                v-if="
+                  selectedSkillLevel === null ||
+                  emp.machineSAB3 === selectedSkillLevel
+                "
+                :class="skillCellClass(emp.machineSAB3)"
+                >{{ getSkillLabel(emp.machineSAB3) }}</span
+              >
+              <span v-else class="cell-dimmed">—</span>
             </td>
+
             <td class="skill-td">
-              <span :class="skillCellClass(emp.inspection)">{{
-                getSkillLabel(emp.inspection)
-              }}</span>
+              <span
+                v-if="
+                  selectedSkillLevel === null ||
+                  emp.inspection === selectedSkillLevel
+                "
+                :class="skillCellClass(emp.inspection)"
+                >{{ getSkillLabel(emp.inspection) }}</span
+              >
+              <span v-else class="cell-dimmed">—</span>
             </td>
             <td>
               <button
@@ -232,21 +270,21 @@
     </div>
 
     <div class="legend">
-  <button
-    v-for="level in [0,1,2,3]"
-    :key="level"
-    class="legend-btn"
-    :class="{ [`active-${level}`]: selectedSkillLevel === level }"
-    @click="filterBySkillLevel(level)"
-  >
-    <span :class="'legend-dot dot-' + level"></span>
-    {{ ['Not Trained','Basic','Medium','Expert'][level] }}
-  </button>
+      <button
+        v-for="level in [0, 1, 2, 3]"
+        :key="level"
+        class="legend-btn"
+        :class="{ [`active-${level}`]: selectedSkillLevel === level }"
+        @click="filterBySkillLevel(level)"
+      >
+        <span :class="'legend-dot dot-' + level"></span>
+        {{ ["Not Trained", "Basic", "Medium", "Expert"][level] }}
+      </button>
 
-  <!-- <button class="refresh-skill-btn" @click="selectedSkillLevel = null">
+      <!-- <button class="refresh-skill-btn" @click="selectedSkillLevel = null">
     รีเซต
   </button> -->
-</div>
+    </div>
 
     <div v-if="showModal" class="modal">
       <div class="modal-content">
@@ -268,6 +306,7 @@
           type="text"
           class="input-field"
           placeholder="ToBiz"
+          readonly
         />
         <label>ย้ายไป Process:</label>
         <input
@@ -275,6 +314,7 @@
           type="text"
           class="input-field"
           placeholder="ToProcess"
+          readonly
         />
         <div class="modal-actions">
           <button class="btn-confirm" @click="saveAssignment">ยืนยัน</button>
@@ -302,9 +342,23 @@ const props = defineProps({ filters: Object });
 const emit = defineEmits(["assignmentChanged"]);
 
 const filterBySkillLevel = (level) => {
-  selectedSkillLevel.value =
-    selectedSkillLevel.value === level ? null : level;
+  selectedSkillLevel.value = selectedSkillLevel.value === level ? null : level;
 };
+
+// ✅ แก้เป็น
+const signalRConnection = inject("signalRConnection", ref(null)); // ชื่อต้องตรงกับที่ใช้ใน watch
+
+onMounted(() => {
+  fetchData();
+  setInterval(fetchData, 10000);
+
+  watch(signalRConnection, (conn) => {  // ✅ ตอนนี้ตัวแปรมีอยู่แล้ว
+    if (conn) {
+      conn.on("AssignmentUpdated", fetchData);
+      conn.on("EICCUpdated", fetchData);
+    }
+  }, { immediate: true });
+});
 
 // ✅ JWT claims
 const currentUser = computed(() => {
@@ -332,7 +386,7 @@ const canSelectForThisProcess = computed(() => {
 const skills = ref([]);
 const worktime = ref([]);
 const activeAssignments = ref([]);
-const filteredEmployees = ref([]);
+// const filteredEmployees = ref([]);
 const showModal = ref(false);
 const modalEmployee = ref({
   empID: null,
@@ -348,48 +402,9 @@ const isAutoAssigning = ref(false);
 const autoAssignResult = ref(null);
 const faceEntryData = ref([]);
 
-const getSkillLabel = (level) =>
-  ["Not Trained", "Basic", "Medium", "Expert"][level] ?? "Unknown";
+const filteredEmployees = computed(() => {
+  if (!selectedProcess.value) return [];
 
-const skillCellClass = (level) =>
-  ["cell-level-0", "cell-level-1", "cell-level-2", "cell-level-3"][level] ?? "";
-
-const getBiz = (o) => o.biz ?? o.Biz ?? "";
-const getProcess = (o) => o.process ?? o.Process ?? "";
-const isActive = (empID) =>
-  activeAssignments.value.some(
-    (a) => String(a.empID).trim() === String(empID).trim()
-  );
-const roundTime = (t) => Math.round((t || 0) * 10) / 10;
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString("th-TH") : "");
-
-const resetFilter = () => {
-  filteredEmployees.value = [];
-  autoAssignResult.value = null;
-  selectedProcess.value = null;
-  selectedBiz.value = null;
-};
-
-const LEADER_POSITIONS = [
-  "supervisor",
-  "foreman",
-  "section chief",
-  "manager",
-  "senior engineer",
-  "executive director",
-  "general manager",
-  "assistant general manager",
-  "officer",
-  "senior officer",
-];
-const isLeader = (emp) =>
-  LEADER_POSITIONS.some((p) => (emp.position || "").toLowerCase().includes(p));
-
-const computeRecommendations = () => {
-  if (!selectedProcess.value) {
-    filteredEmployees.value = [];
-    return;
-  }
   const faceMap = new Map(
     (faceEntryData.value || []).map((e) => [String(e.empID), e])
   );
@@ -397,7 +412,7 @@ const computeRecommendations = () => {
     (worktime.value || []).map((w) => [String(w.empID), w.totalHours])
   );
 
-  filteredEmployees.value = skills.value
+  return skills.value
     .map((emp) => {
       const fe = faceMap.get(String(emp.empID));
       const ts =
@@ -425,19 +440,120 @@ const computeRecommendations = () => {
         emp.faceStatus === "status-in-cleanroom"
     )
     .filter((emp) => !isLeader(emp))
-   .filter((emp) => {
-  if (selectedSkillLevel.value === null) return true;
+    .filter((emp) => {
+      if (selectedSkillLevel.value === null) return true;
+      // ✅ แสดงทุก row ที่มี skill นั้นอย่างน้อย 1 ช่อง (เหมือนเดิม)
+      return [
+        emp.material,
+        emp.operation,
+        emp.machineSAB1,
+        emp.machineSAB2,
+        emp.machineSAB3,
+        emp.inspection,
+      ].some((s) => Number(s) === selectedSkillLevel.value);
+    })
+    .sort((a, b) => {
+      if (b.totalSkill !== a.totalSkill) return b.totalSkill - a.totalSkill;
+      return a.totalTime - b.totalTime;
+    });
+});
 
-  return [
-    emp.material,
-    emp.operation,
-    emp.machineSAB1,
-    emp.machineSAB2,
-    emp.machineSAB3,
-    emp.inspection,
-  ].some((s) => Number(s) === selectedSkillLevel.value);
-})
+const getSkillLabel = (level) =>
+  ["Not Trained", "Basic", "Medium", "Expert"][level] ?? "Unknown";
+
+const skillCellClass = (level) =>
+  ["cell-level-0", "cell-level-1", "cell-level-2", "cell-level-3"][level] ?? "";
+
+const getBiz = (o) => o.biz ?? o.Biz ?? "";
+const getProcess = (o) => o.process ?? o.Process ?? "";
+const isActive = (empID) =>
+  activeAssignments.value.some(
+    (a) => String(a.empID).trim() === String(empID).trim()
+  );
+const roundTime = (t) => Math.round((t || 0) * 10) / 10;
+const formatDate = (d) => (d ? new Date(d).toLocaleDateString("th-TH") : "");
+
+const resetFilter = () => {
+  // filteredEmployees.value = [];
+  autoAssignResult.value = null;
+  selectedProcess.value = null;
+  selectedBiz.value = null;
+  selectedSkillLevel.value = null;
 };
+
+const LEADER_POSITIONS = [
+  "supervisor",
+  "foreman",
+  "section chief",
+  "manager",
+  "senior engineer",
+  "executive director",
+  "general manager",
+  "assistant general manager",
+  "officer",
+  "senior officer",
+];
+const isLeader = (emp) =>
+  LEADER_POSITIONS.some((p) => (emp.position || "").toLowerCase().includes(p));
+
+// const computeRecommendations = () => {
+//   if (!selectedProcess.value) {
+//     filteredEmployees.value = [];
+//     return;
+//   }
+//   const faceMap = new Map(
+//     (faceEntryData.value || []).map((e) => [String(e.empID), e])
+//   );
+//   const wtMap = new Map(
+//     (worktime.value || []).map((w) => [String(w.empID), w.totalHours])
+//   );
+
+//   filteredEmployees.value = skills.value
+//     .map((emp) => {
+//       const fe = faceMap.get(String(emp.empID));
+//       const ts =
+//         (emp.material || 0) +
+//         (emp.operation || 0) +
+//         (emp.machineSAB1 || 0) +
+//         (emp.machineSAB2 || 0) +
+//         (emp.machineSAB3 || 0) +
+//         (emp.inspection || 0);
+//       const asgn = activeAssignments.value.find(
+//         (a) => String(a.empID).trim() === String(emp.empID).trim()
+//       );
+//       return {
+//         ...emp,
+//         totalSkill: ts,
+//         totalTime: wtMap.get(String(emp.empID)) || 0,
+//         faceStatus: fe?.status || null,
+//         assignmentStatus: asgn?.status || null,
+//         assignmentID: asgn?.assignmentID || null,
+//       };
+//     })
+//     .filter(
+//       (emp) =>
+//         faceEntryData.value.length === 0 ||
+//         emp.faceStatus === "status-in-cleanroom"
+//     )
+//     .filter((emp) => !isLeader(emp))
+//    .filter((emp) => {
+//   if (selectedSkillLevel.value === null) return true;
+
+//   return [
+//     emp.material,
+//     emp.operation,
+//     emp.machineSAB1,
+//     emp.machineSAB2,
+//     emp.machineSAB3,
+//     emp.inspection,
+//   ].some((s) => Number(s) === selectedSkillLevel.value);
+// })
+// .sort((a, b) => {
+//       if (b.totalSkill !== a.totalSkill)
+//         return b.totalSkill - a.totalSkill; // Skill มากกว่า → ขึ้นก่อน
+//       return a.totalTime - b.totalTime;     // Worktime น้อยกว่า → ขึ้นก่อน
+//     });
+// };
 
 const fetchData = async () => {
   try {
@@ -464,7 +580,7 @@ const fetchData = async () => {
       empID: emp.empID,
       totalHours: wtMap.get(String(emp.empID)) || 0,
     }));
-    computeRecommendations();
+    // computeRecommendations();
   } catch (err) {
     console.error("❌", err);
   }
@@ -475,9 +591,9 @@ watch(
   () => fetchData()
 );
 
-watch(selectedSkillLevel, () => {
-  computeRecommendations();
-});
+// watch(selectedSkillLevel, () => {
+//   computeRecommendations();
+// });
 
 const openSelectionForm = (emp) => {
   if (!canSelectForThisProcess.value) {
@@ -614,13 +730,13 @@ const updateEndAt = async (empID) => {
   }
 };
 
-onMounted(() => {
-  fetchData();
-  if (window.connection) {
-    window.connection.on("EICCUpdated", fetchData);
-    window.connection.on("AssignmentUpdated", fetchData);
-  }
-});
+// onMounted(() => {
+//   fetchData();
+//   if (window.connection) {
+//     window.connection.on("EICCUpdated", fetchData);
+//     window.connection.on("AssignmentUpdated", fetchData);
+//   }
+// });
 </script>
 
 <style scoped>
@@ -651,7 +767,7 @@ onMounted(() => {
 .refresh-skill-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background-color: #007bff;
   color: white;
   border: none;
@@ -659,7 +775,7 @@ onMounted(() => {
   padding: 6px 14px;
   cursor: pointer;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 13px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   transition: background-color 0.3s, transform 0.3s;
 }
@@ -774,10 +890,22 @@ tr:not(.row-highlight):not(.row-pending):not(.row-active-assigned):hover {
   white-space: nowrap;
   box-sizing: border-box;
 }
-.cell-level-0 { background: #d1d5db; color: #374151; }
-.cell-level-1 { background: #ef4444; color: white; }
-.cell-level-2 { background: #eab308; color: white; }
-.cell-level-3 { background: #16a34a; color: white; }
+.cell-level-0 {
+  background: #d1d5db;
+  color: #374151;
+}
+.cell-level-1 {
+  background: #ef4444;
+  color: white;
+}
+.cell-level-2 {
+  background: #eab308;
+  color: white;
+}
+.cell-level-3 {
+  background: #16a34a;
+  color: white;
+}
 .legend {
   display: flex;
   gap: 16px;
@@ -928,7 +1056,7 @@ button[disabled] {
   color: #065f46;
 }
 .step.active .dot {
-  background: #1D9E75;
+  background: #1d9e75;
 }
 .step.done {
   background: #e0f2fe;
@@ -975,26 +1103,67 @@ button[disabled] {
 }
 
 /* active สี */
-.active-0 { background: #d1d5db; color:#111; }
-.active-1 { background: #ef4444; color:#fff; }
-.active-2 { background: #eab308; color:#fff; }
-.active-3 { background: #16a34a; color:#fff; }
+.active-0 {
+  background: #d1d5db;
+  color: #111;
+}
+.active-1 {
+  background: #ef4444;
+  color: #fff;
+}
+.active-2 {
+  background: #eab308;
+  color: #fff;
+}
+.active-3 {
+  background: #16a34a;
+  color: #fff;
+}
 
 .legend-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
 }
-.dot-0 { background:#d1d5db; }
-.dot-1 { background:#ef4444; }
-.dot-2 { background:#eab308; }
-.dot-3 { background:#16a34a; }
+.dot-0 {
+  background: #d1d5db;
+}
+.dot-1 {
+  background: #ef4444;
+}
+.dot-2 {
+  background: #eab308;
+}
+.dot-3 {
+  background: #16a34a;
+}
+.cell-dimmed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  background: #f3f4f6;
+  color: #d1d5db;
+  font-size: 12px;
+  font-weight: 600;
+}
 @keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 </style>

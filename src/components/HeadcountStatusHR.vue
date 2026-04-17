@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
+import { ref, onMounted, watch, nextTick, inject } from 'vue';
 import axios from 'axios';
 import Plotly from 'plotly.js';
 
@@ -13,6 +13,8 @@ const attendanceData = ref([]);
 // const transactionsData = ref([]);
 const isLoading = ref(false);
 const chartRendered = ref(false); // ✅ เพิ่ม flag
+const signalRConnection = inject("signalRConnection", null);
+let interval = null;
 
 // ✅ ดึงข้อมูล headcount จาก API พร้อม filter
 // const fetchHeadcountData = async () => {
@@ -151,14 +153,15 @@ const drawChart = () => {
   if (!chartEl) return;
 
   const normal = attendanceData.value.filter(e => e.status?.toLowerCase().trim() === 'normal').length;
+  const late = attendanceData.value.filter(e => e.status?.toLowerCase().trim() === 'late').length;
   const absent = attendanceData.value.filter(e => e.status?.toLowerCase().trim() === 'absent').length;
 
   if (normal + absent === 0) return;
 
   Plotly.newPlot(chartEl, [{
     // title: 'HeadCount Status',
-    labels: ['Normal', 'Absent'],
-    values: [normal, absent],
+    labels: ['Normal', 'Late', 'Absent'],
+    values: [normal, late, absent],
     type: 'pie',
     marker: { colors: ['#2ECC71', '#E74C3C'] },
     textinfo: 'label+percent',
@@ -173,7 +176,7 @@ const drawChart = () => {
 
   chartEl.on('plotly_click', (eventData) => {
     if (!eventData.points?.length) return;
-    const labelMap = { 'Normal': 'normal', 'Absent': 'absent' };
+    const labelMap = { 'Normal': 'normal', 'Late': 'late', 'Absent': 'absent' };
     const status = labelMap[eventData.points[0].label];
     if (status) emit('filter-status', status);
   });
@@ -192,9 +195,25 @@ watch(
   { deep: true }
 );
 
+watch(signalRConnection, (conn, oldConn) => {
+  if (oldConn) {
+    oldConn.off("HeadcountUpdated", fetchHeadcountData);
+  }
+
+  if (conn) {
+    conn.off("HeadcountUpdated", fetchHeadcountData);
+    conn.on("HeadcountUpdated", fetchHeadcountData);
+  }
+}, { immediate: true });
+
 // ✅ เริ่มต้น mount component -> fetch data และวาด chart
 onMounted(async () => {
   await fetchHeadcountData();
+
+  // ✅ auto refresh ทุก 10 วินาที
+  interval = setInterval(() => {
+    fetchHeadcountData();
+  }, 10000);
 });
 </script>
 

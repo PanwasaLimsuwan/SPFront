@@ -66,7 +66,7 @@
                   class="btn-approve"
                   @click="approve(a.assignmentID)"
                   title="อนุมัติ"
-                >✅ Approve</button>
+                >Approve</button>
                 <!-- <span v-else class="lock-icon" title="ไม่ใช่ Process ของคุณ">🔒</span> -->
               
               <button
@@ -74,7 +74,7 @@
     class="btn-cancel"
     @click="cancelAssignment(a.assignmentID)"
     title="ยกเลิก"
-  >✕</button>
+  >Cancel</button>
               </template>
 
               <!-- Complete เฉพาะถ้า canApprove -->
@@ -104,7 +104,7 @@
    <!-- Returning: เฉพาะ ToProcess ยืนยัน -->
   <template v-if="a.status === 'Returning'">
     <button v-if="canConfirmReturn(a)" class="btn-approve"
-      @click="confirmReturn(a.assignmentID)">✅ ยืนยันรับทราบ</button>
+      @click="confirmReturn(a.assignmentID)">approve</button>
     <span v-else class="lock-icon" title="รอ ToProcess ยืนยัน">⏳</span>
   </template>
             </td>
@@ -346,12 +346,20 @@ const canConfirmReturn = (a) => {
 
 const returnEmployee = async (a) => {
   const side = isToSide(a) ? "to" : "from";
-  const msg  = side === "from"
-    ? "ขอคืนพนักงาน? ระบบจะแจ้ง ToProcess เพื่อยืนยัน"
-    : "ยืนยันการคืนพนักงาน?";
+
+  // ✅ สร้างชื่อปลายทาง
+  const targetLeader = `Leader ${a.toProcess || "-"} / ${a.toBiz || "-"}`;
+
+  const msg = side === "from"
+    ? `ขอคืนพนักงาน?\nระบบจะแจ้งไปที่ ${targetLeader} เพื่อขอพนักงานคืน`
+    : `ยืนยันการคืนพนักงาน?\nระบบจะดำเนินการคืนกลับไปยัง ${a.fromProcess || "-"} / ${a.fromBiz || "-"}`;
+
   if (!confirm(msg)) return;
+
   try {
-    await axios.put(`http://localhost:5000/api/Assignment/${a.assignmentID}/return?callerSide=${side}`);
+    await axios.put(
+      `http://localhost:5000/api/Assignment/${a.assignmentID}/return?callerSide=${side}`
+    );
     await fetchData();
     refreshBarChart();
     emit("changed");

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, inject } from 'vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -12,6 +12,8 @@ const emit = defineEmits(['clear-status']);
 const attendanceData = ref([]);
 // const transactionsData = ref([]);
 const isLoading = ref(false);
+const signalRConnection = inject("signalRConnection", null);
+let interval = null;
 
 // ✅ Fetch พร้อมใช้ filters
 // const fetchEmployees = async () => {
@@ -97,6 +99,17 @@ watch(() => props.filters, () => {
   emit('clear-status');
 }, { deep: true });
 
+watch(signalRConnection, (conn, oldConn) => {
+  if (oldConn) {
+    oldConn.off("HeadcountUpdated", fetchEmployees);
+  }
+
+  if (conn) {
+    conn.off("HeadcountUpdated", fetchEmployees);
+    conn.on("HeadcountUpdated", fetchEmployees);
+  }
+}, { immediate: true });
+
 const allEmployees = computed(() => {
   return attendanceData.value.map(e => ({
     ...e,
@@ -155,8 +168,13 @@ const getStatusLabel = (status) => {
   }[status] || status;
 };
 
-onMounted(() => {
-  fetchEmployees();
+onMounted(async () => {
+  await fetchEmployees();
+
+  // ✅ auto refresh ทุก 10 วินาที
+  interval = setInterval(() => {
+    fetchEmployees();
+  }, 10000);
 });
 </script>
 

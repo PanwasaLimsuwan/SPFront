@@ -2,22 +2,25 @@
   <div class="chart-container">
     <div class="filter-bar">
       <label for="week-select">Select Week:</label>
-      <select 
-        id="week-select" 
-        v-model="selectedWeekID" 
-        @change="onWeekChange" 
+      <select
+        id="week-select"
+        v-model="selectedWeekKey"
+        @change="onWeekChange"
         :disabled="loading || weekOptions.length === 0"
       >
-        <option v-if="weekOptions.length === 0" value="">No weeks available</option>
-        <option v-for="week in weekOptions" :key="week" :value="week">Week {{ week }}</option>
+        <option v-if="weekOptions.length === 0" value="">
+          No weeks available
+        </option>
+        <!-- <option v-for="week in weekOptions" :key="week" :value="week">Week {{ week }}</option> -->
+        <option v-for="week in weekOptions" :key="week.key" :value="week.key">
+          Week {{ week.weekID }} | {{ week.startDate }} – {{ week.endDate }}
+        </option>
       </select>
       <span v-if="loading" class="loading-indicator">⏳ Loading...</span>
     </div>
-    
-    <div v-if="errorMessage" class="error-message">
-      ❌ {{ errorMessage }}
-    </div>
-    
+
+    <div v-if="errorMessage" class="error-message">❌ {{ errorMessage }}</div>
+
     <div id="worked-time-chart" class="scrollable-chart"></div>
   </div>
 </template>
@@ -31,7 +34,7 @@ export default {
   props: {
     filters: {
       type: Object,
-      default: () => ({})
+      default: () => ({}),
     },
   },
   data() {
@@ -40,7 +43,8 @@ export default {
       employeeInfo: [],
       combinedData: [],
       weekOptions: [],
-      selectedWeekID: null,
+      // selectedWeekID: null,
+      selectedWeekKey: null,
       loading: false,
       errorMessage: "",
     };
@@ -64,9 +68,12 @@ export default {
       try {
         this.errorMessage = "";
         await this.fetchWeekOptions();
-        
+
         if (this.weekOptions.length > 0) {
-          this.selectedWeekID = this.weekOptions[this.weekOptions.length - 1];
+          // this.selectedWeekID = this.weekOptions[this.weekOptions.length - 1];
+          // this.selectedWeekID = this.weekOptions[this.weekOptions.length - 1].weekID;
+          this.selectedWeekKey =
+            this.weekOptions[this.weekOptions.length - 1].key;
           console.log("Selected week:", this.selectedWeekID);
           await this.refreshChart();
         } else {
@@ -81,29 +88,35 @@ export default {
 
     buildParams(includeWeekID = false) {
       const params = {};
-      
+
       // ✅ ส่งเฉพาะ filter ที่ไม่ใช่ 'ALL'
-      if (this.filters?.division && this.filters.division !== 'ALL') {
+      if (this.filters?.division && this.filters.division !== "ALL") {
         params.division = this.filters.division;
       }
-      if (this.filters?.department && this.filters.department !== 'ALL') {
+      if (this.filters?.department && this.filters.department !== "ALL") {
         params.department = this.filters.department;
       }
-      if (this.filters?.section && this.filters.section !== 'ALL') {
+      if (this.filters?.section && this.filters.section !== "ALL") {
         params.section = this.filters.section;
       }
-      if (this.filters?.biz && this.filters.biz !== 'ALL') {
+      if (this.filters?.biz && this.filters.biz !== "ALL") {
         params.biz = this.filters.biz;
       }
-      if (this.filters?.process && this.filters.process !== 'ALL') {
+      if (this.filters?.process && this.filters.process !== "ALL") {
         params.process = this.filters.process;
       }
-      
+
       // ✅ ส่ง weekID เฉพาะตอนที่ต้องการ
-      if (includeWeekID && this.selectedWeekID) {
-        params.weekID = this.selectedWeekID;
+      if (includeWeekID && this.selectedWeekKey) {
+        const selected = this.weekOptions.find(
+          (w) => w.key === this.selectedWeekKey
+        );
+        if (selected) {
+          params.weekID = selected.weekID;
+          params.year = selected.year; // ✅ ส่ง year ไปด้วย
+        }
       }
-      
+
       return params;
     },
 
@@ -111,33 +124,60 @@ export default {
       try {
         this.loading = true;
         console.log("=== Fetching Week Options ===");
-        
+
         // ✅ ไม่ส่ง weekID เพื่อดึงทุกสัปดาห์
         const params = this.buildParams(false);
         console.log("Request params:", params);
-        
-        const response = await axios.get("http://localhost:5000/api/EICCControl", { params });
-        
+
+        const response = await axios.get(
+          "http://localhost:5000/api/EICCControl",
+          { params }
+        );
+
         console.log("Response data count:", response.data.length);
         console.log("Sample data:", response.data.slice(0, 3));
-        
+
         if (!response.data || response.data.length === 0) {
           console.warn("⚠️ No data returned from API");
           this.weekOptions = [];
           return;
         }
-        
+
         // ✅ ดึง weekID ทั้งหมดที่ไม่ซ้ำกัน
-        const weeks = [...new Set(response.data.map(item => item.weekID))]
-          .filter(w => w != null) // กรอง null/undefined
-          .sort((a, b) => a - b);
-        
-        this.weekOptions = weeks;
-        console.log("✅ Week options:", this.weekOptions);
-        
+        // const weeks = [...new Set(response.data.map(item => item.weekID))]
+        //   .filter(w => w != null) // กรอง null/undefined
+        //   .sort((a, b) => a - b);
+
+        // this.weekOptions = weeks;
+        // console.log("✅ Week options:", this.weekOptions);
+
+        const weekMap = {};
+        response.data.forEach((item) => {
+          if (item.weekID != null && item.year != null) {
+            const key = `${item.year}-${item.weekID}`; // ✅ key ไม่ซ้ำข้ามปี
+            if (!weekMap[key]) {
+              weekMap[key] = {
+                weekID: item.weekID,
+                year: item.year,
+                key: key,
+                startDate: item.weekStart
+                  ? new Date(item.weekStart).toISOString().substring(0, 10)
+                  : "",
+                endDate: item.weekEnd
+                  ? new Date(item.weekEnd).toISOString().substring(0, 10)
+                  : "",
+              };
+            }
+          }
+        });
+
+        // ✅ Sort ตาม year ก่อน แล้วค่อย weekID
+        this.weekOptions = Object.values(weekMap).sort((a, b) =>
+          a.year !== b.year ? a.year - b.year : a.weekID - b.weekID
+        );
       } catch (error) {
-        console.error("❌ Error fetching weeks:", error);
-        console.error("Error response:", error.response?.data);
+        // console.error("❌ Error fetching weeks:", error);
+        // console.error("Error response:", error.response?.data);
         this.errorMessage = `Failed to fetch weeks: ${error.message}`;
       } finally {
         this.loading = false;
@@ -166,7 +206,7 @@ export default {
       try {
         this.loading = true;
         console.log("=== Fetching Chart Data ===");
-        
+
         // ✅ ส่ง weekID ไปด้วย
         const params = this.buildParams(true);
         console.log("Request params with weekID:", params);
@@ -175,17 +215,16 @@ export default {
           axios.get("http://localhost:5000/api/EICCControl", { params }),
           axios.get("http://localhost:5000/api/EmployeeInfo"),
         ]);
-        
+
         this.worktime = workRes.data;
         this.employeeInfo = empRes.data;
-        
+
         console.log("✅ Worktime records:", this.worktime.length);
         console.log("✅ Employee records:", this.employeeInfo.length);
-        
+
         if (this.worktime.length > 0) {
           console.log("Sample worktime record:", this.worktime[0]);
         }
-        
       } catch (error) {
         console.error("❌ Error fetching data:", error);
         this.errorMessage = `Failed to fetch data: ${error.message}`;
@@ -201,19 +240,26 @@ export default {
 
       // ✅ ตรวจสอบ status ทั้ง "Active" และ "Complete"
       const validStatuses = ["Active", "Complete"];
-      const filteredRecords = this.worktime.filter(w => 
+      const filteredRecords = this.worktime.filter((w) =>
         validStatuses.includes(w.status)
       );
-      
-      console.log(`Filtered records (${validStatuses.join('/')}):`, filteredRecords.length);
 
-      filteredRecords.forEach(w => {
+      console.log(
+        `Filtered records (${validStatuses.join("/")}):`,
+        filteredRecords.length
+      );
+
+      filteredRecords.forEach((w) => {
         const empID = w.empID;
-        
+
         // ✅ แปลง totalHours จาก Backend (อาจเป็น decimal/number/string)
         const worked = w.totalHours ? Number(w.totalHours) : 0;
 
-        console.log(`EmpID: ${empID}, Status: ${w.status}, TotalHours: ${w.totalHours} (${typeof w.totalHours}), Parsed: ${worked}`);
+        console.log(
+          `EmpID: ${empID}, Status: ${w.status}, TotalHours: ${
+            w.totalHours
+          } (${typeof w.totalHours}), Parsed: ${worked}`
+        );
 
         if (!groupedByEmp[empID]) {
           groupedByEmp[empID] = { totalWorked: 0 };
@@ -232,7 +278,7 @@ export default {
       }, {});
 
       // ✅ รวมข้อมูล
-      this.combinedData = Object.keys(groupedByEmp).map(empID => {
+      this.combinedData = Object.keys(groupedByEmp).map((empID) => {
         const emp = employeeMap[empID];
         const name = emp ? `${emp.firstName} ${emp.lastName}` : `Emp ${empID}`;
 
@@ -260,12 +306,16 @@ export default {
         return rankA !== rankB ? rankA - rankB : b.percent - a.percent;
       });
 
-      console.log("✅ Combined data ready:", this.combinedData.length, "employees");
+      console.log(
+        "✅ Combined data ready:",
+        this.combinedData.length,
+        "employees"
+      );
     },
 
     drawChart() {
       const container = document.getElementById("worked-time-chart");
-      
+
       if (!container) {
         console.error("❌ Chart container not found!");
         return;
@@ -273,50 +323,77 @@ export default {
 
       if (this.combinedData.length === 0) {
         console.log("⚠️ No data to display");
-        Plotly.newPlot("worked-time-chart", [], {
-          title: `No data for Week ${this.selectedWeekID || 'N/A'}`,
-          xaxis: { visible: false },
-          yaxis: { visible: false },
-          annotations: [{
-            text: "No data available",
-            xref: "paper",
-            yref: "paper",
-            x: 0.5,
-            y: 0.5,
-            showarrow: false,
-            font: { size: 16, color: "#888" },
-          }],
-        }, {
-  displayModeBar: false
-});
+        Plotly.newPlot(
+          "worked-time-chart",
+          [],
+          {
+            title: `No data for Week ${this.selectedWeekID || "N/A"}`,
+            xaxis: { visible: false },
+            yaxis: { visible: false },
+            annotations: [
+              {
+                text: "No data available",
+                xref: "paper",
+                yref: "paper",
+                x: 0.5,
+                y: 0.5,
+                showarrow: false,
+                font: { size: 16, color: "#888" },
+              },
+            ],
+          },
+          {
+            displayModeBar: false,
+          }
+        );
         return;
       }
 
-      const chartData = [{
-        x: this.combinedData.map(emp => emp.percent),
-        y: this.combinedData.map(emp => emp.name),
-        type: "bar",
-        orientation: "h",
-        marker: {
-          color: this.combinedData.map(emp => emp.color),
+      const chartData = [
+        {
+          x: this.combinedData.map((emp) => emp.percent),
+          y: this.combinedData.map((emp) => emp.name),
+          type: "bar",
+          orientation: "h",
+          marker: {
+            color: this.combinedData.map((emp) => emp.color),
+          },
+          text: this.combinedData.map(
+            (emp) => `${emp.percent.toFixed(1)}% (${emp.total.toFixed(1)}h)`
+          ),
+          textposition: "auto",
+          hovertemplate:
+            "<b>%{y}</b><br>Hours: %{customdata:.1f}<br>Percentage: %{x:.1f}%<extra></extra>",
+          customdata: this.combinedData.map((emp) => emp.total),
         },
-        text: this.combinedData.map(emp => `${emp.percent.toFixed(1)}% (${emp.total.toFixed(1)}h)`),
-        textposition: "auto",
-        hovertemplate: "<b>%{y}</b><br>Hours: %{customdata:.1f}<br>Percentage: %{x:.1f}%<extra></extra>",
-        customdata: this.combinedData.map(emp => emp.total),
-      }];
+      ];
+
+      const weekInfo = this.weekOptions.find(
+        (w) => w.key === this.selectedWeekKey
+      );
+      const dateRange = weekInfo?.startDate
+        ? `(${weekInfo.startDate} – ${weekInfo.endDate})`
+        : "";
 
       const layout = {
-        title: `Worked Time - Week ${this.selectedWeekID} (Target: 60 hrs/week)`,
+        // title: `Worked Time - Week ${this.selectedWeekID} (Target: 60 hrs/week)`,
+        // title: `Worked Time — Week ${this.selectedWeekID} ${dateRange} (Target: 60 hrs/week)`,
+        title: `Worked Time — Week ${weekInfo?.weekID} ${dateRange} (Target: 60 hrs/week)`,
         height: Math.max(400, this.combinedData.length * 40),
         margin: { l: 200, r: 20, t: 50, b: 50 },
-        xaxis: { 
-          title: "Percentage (%)", 
-          range: [0, Math.max(120, Math.max(...this.combinedData.map(e => e.percent)) * 1.1)],
+        xaxis: {
+          title: "Percentage (%)",
+          range: [
+            0,
+            Math.max(
+              120,
+              Math.max(...this.combinedData.map((e) => e.percent)) * 1.1
+            ),
+          ],
           showgrid: true,
         },
-        yaxis: { 
-          automargin: true, 
+        yaxis: {
+          automargin: true,
           autorange: "reversed",
         },
         plot_bgcolor: "#f9f9f9",
@@ -326,13 +403,13 @@ export default {
 
       const config = {
         responsive: true,
-        displayModeBar: true,
+        displayModeBar: false,
         displaylogo: false,
       };
 
       Plotly.newPlot("worked-time-chart", chartData, layout, config, {
-  displayModeBar: false
-});
+        displayModeBar: false,
+      });
       console.log("✅ Chart rendered successfully");
     },
   },

@@ -29,7 +29,10 @@
         </div>
 
         <div class="options">
-          <label><input type="checkbox" v-model="showPassword" /> Show password</label>
+          <label class="show-pass">
+  <input type="checkbox" v-model="showPassword" />
+  <span>Show password</span>
+</label>
           <!-- <label><input type="checkbox" v-model="remember" /> Remember me</label> -->
         </div>
 
@@ -192,9 +195,16 @@ input:focus {
 
 .options {
   display: flex;
-  justify-content: space-between;
   font-size: 0.92rem;
+  gap: 8px;
   margin: 8px 0 12px;
+}
+
+.options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
 }
 
 .btn {
@@ -223,5 +233,12 @@ input:focus {
   font-size: 0.85rem;
   color: #777;
   text-align: center;
+}
+
+.options .show-pass {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 </style>

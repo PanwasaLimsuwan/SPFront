@@ -72,11 +72,16 @@ const selectedWorkDate = ref(null);
 const headcountNeed = ref(0);
 
 // ✅ เพิ่ม: ref สำหรับ RequiredBarChart เพื่อ call refresh จากนอก
-const requiredBarChartRef = ref(null);
+// const requiredBarChartRef = ref(null);
+let requiredBarChartRef = null;
 
 const refreshBarChart = () => {
-  requiredBarChartRef.value?.refresh();
+  requiredBarChartRef?.refresh();
 };
+
+// ✅ แก้ — ย้ายมาระดับ setup (นอก onMounted)
+const signalRConnection = ref(null);           // ← ระดับ setup
+provide("signalRConnection", signalRConnection);
 
 // ✅ provide ให้ EmployeeRecommendations ใช้ได้
 provide("refreshBarChart", refreshBarChart);
@@ -346,7 +351,7 @@ const buildWidgetsFromDefinitions = () => {
               filters: filters.value,
             };
           case "requiredBar":
-            return { filters: filters.value, ref: requiredBarChartRef };
+            return { filters: filters.value };
           // case "recommendations":
           //   return {
           //     selectedProcess: selectedProcess.value,
@@ -393,11 +398,11 @@ const buildWidgetsFromDefinitions = () => {
           //     filters: filters.value,
           //   };
           case "assignmentStatus":
-  return {
-    changed: () => {
-      refreshBarChart();        // refresh กราฟหลัง approve/complete
-    }
-  };
+            return {
+              changed: () => {
+                refreshBarChart(); // refresh กราฟหลัง approve/complete
+              },
+            };
           case "recommendations":
             return {};
           case "skillsBlock":
@@ -414,11 +419,14 @@ const buildWidgetsFromDefinitions = () => {
     .filter((w) => w.comp !== null); // กรอง widget ที่ไม่มี component
 
   // ใน buildWidgetsFromDefinitions ก่อน return
-console.log("🔍 Building widgets from:", availableWidgets.value.map(w => ({
-  id: w.widgetId, 
-  comp: w.componentName,
-  found: !!componentMap[w.componentName]
-})));
+  console.log(
+    "🔍 Building widgets from:",
+    availableWidgets.value.map((w) => ({
+      id: w.widgetId,
+      comp: w.componentName,
+      found: !!componentMap[w.componentName],
+    }))
+  );
   return builtWidgets;
 };
 
@@ -584,17 +592,19 @@ onMounted(async () => {
   const builtWidgets = buildWidgetsFromDefinitions();
   const savedOrder = await fetchWidgetSettings();
 
+  // ✅ แก้ — ย้าย provide ออกมาระดับ setup แล้วใช้ ref
+  // const signalRConnection = ref(null); // ✅ เพิ่มบรรทัดนี้ระดับ setup
+  // provide("signalRConnection", signalRConnection); // ✅ provide ref ระดับ setup
+
   if (savedOrder?.length) {
     const map = new Map(builtWidgets.map((w) => [w.id, w]));
     // ✅ เอา saved order มาก่อน แล้วเพิ่ม widget ใหม่ที่ยังไม่มีใน saved order ต่อท้าย
-    const orderedWidgets = savedOrder
-      .map((id) => map.get(id))
-      .filter(Boolean);
-    
+    const orderedWidgets = savedOrder.map((id) => map.get(id)).filter(Boolean);
+
     const newWidgets = builtWidgets.filter(
-      (w) => !savedOrder.includes(w.id)  // ✅ widget ใหม่ที่ไม่มีใน saved
+      (w) => !savedOrder.includes(w.id) // ✅ widget ใหม่ที่ไม่มีใน saved
     );
-    
+
     widgets.value = [...orderedWidgets, ...newWidgets];
   } else {
     widgets.value = builtWidgets;
@@ -608,6 +618,13 @@ onMounted(async () => {
   try {
     await connection.start();
     console.log("✅ SignalR Connected");
+
+    // connection.on("AssignmentUpdated", () => {
+    //   refreshBarChart();
+    // });
+
+    window.connection = connection;
+    signalRConnection.value = connection;
   } catch (err) {
     console.error("❌ SignalR error:", err);
   }
@@ -1157,9 +1174,7 @@ function hideAll() {
             :is="element.comp"
             v-bind="element.binds()"
             v-on="element.on()"
-            :ref="
-              element.id === 'requiredBar' ? requiredBarChartRef : undefined
-            "
+            :ref="(el) => { if (element.id === 'requiredBar') requiredBarChartRef = el; }"
           />
         </div>
       </template>
@@ -1394,15 +1409,13 @@ function hideAll() {
   min-height: 0 !important;
 }
 
-/* ถ้าปุ่ม Refresh วางแบบ absolute แล้วกันพื้นที่ไว้ ให้ย้ายไปวางทับได้โดยไม่ดันเนื้อหา */
-.card [class*="refresh"],
+/* .card [class*="refresh"],
 .card .refresh,
 .card .btn-refresh {
   position: absolute;
   right: 16px;
   bottom: 16px;
-  /* อย่าตั้ง top:... เพราะจะกันพื้นที่ด้านบน */
-}
+} */
 
 /* กัน margin collapse และช่องว่างเกินจำเป็น */
 .card > *:first-child {
@@ -1447,7 +1460,7 @@ function hideAll() {
 }
 
 /* ทำให้ปุ่ม refresh แบบ absolute ไม่ดัน content */
-.card {
+/* .card {
   position: relative;
 }
 .card [class*="refresh"],
@@ -1456,7 +1469,7 @@ function hideAll() {
   position: absolute;
   right: 16px;
   bottom: 16px;
-}
+} */
 
 /* Customize button */
 .btn-customize {

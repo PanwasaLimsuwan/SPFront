@@ -20,6 +20,7 @@ const emit = defineEmits(["barClick"]);
 const rawData = ref([]);
 const workDate = ref(null);
 const selectedProcessFromParent = inject("selectedProcess", ref(null));
+const signalRConnection = inject("signalRConnection", ref(null));
 
 // ✅ JWT claims สำหรับเช็ค permission
 const currentUser = computed(() => {
@@ -45,8 +46,13 @@ const canAccessProcess = (biz, process) => {
 const formatDate = (date) =>
   date ? new Date(date).toLocaleDateString() : "";
 
-const drawChart = () => {
+const drawChart = async () => {
   if (!rawData.value.length) return;
+
+  await nextTick(); // รอให้ DOM render เสร็จก่อน
+
+  const el = document.getElementById("required-bar-chart");
+  if (!el) return; // ยังไม่มี DOM → ออก
 
   const processes = [...new Set(rawData.value.map((d) => d.process))];
   const shortageProcesses = processes.filter((p) => {
@@ -157,10 +163,10 @@ const fetchData = async () => {
       return;
     }
 
-    rawData.value = res.data;
-    workDate.value = res.data[0].workDate;
-    await nextTick();
-    drawChart();
+    // ✅ แก้เป็น
+rawData.value = res.data;
+workDate.value = res.data[0].workDate;
+await drawChart(); // ← ใช้ await เพราะ drawChart เป็น async แล้ว
   } catch (err) {
     console.error("❌ Error fetching manpower data:", err);
   }
@@ -174,10 +180,24 @@ watch(selectedProcessFromParent, () => drawChart());
 
 onMounted(async () => {
   await fetchData();
-  if (window.connection) {
-    window.connection.on("ManpowerUpdated", fetchData);
-  }
+
+  // Polling ทุก 10 วินาที เป็น fallback กรณี SignalR พลาด
+  setInterval(fetchData, 10000);
 });
+
+// ✅ แก้ watch ให้ป้องกัน listener ซ้ำ
+watch(signalRConnection, (conn, oldConn) => {
+  if (oldConn) {
+    oldConn.off("AssignmentUpdated", fetchData);
+    oldConn.off("ManpowerUpdated", fetchData);
+  }
+  if (conn) {
+    conn.off("AssignmentUpdated", fetchData); // ล้างก่อน
+    conn.off("ManpowerUpdated", fetchData);
+    conn.on("AssignmentUpdated", fetchData);
+    conn.on("ManpowerUpdated", fetchData);
+  }
+}, { immediate: true });
 </script>
 
 <style scoped>

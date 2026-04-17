@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from "vue";
+import { ref, onMounted, watch, nextTick, inject } from "vue";
 import axios from "axios";
 import Plotly from "plotly.js";
 
@@ -13,6 +13,8 @@ const headcountData = ref([]);
 const workDate = ref(null);
 const isLoading = ref(false);
 const chartRendered = ref(false);
+const signalRConnection = inject("signalRConnection", null);
+let interval = null;
 
 // ===============================
 // Fetch Headcount Data
@@ -172,9 +174,25 @@ watch(
   { deep: true }
 );
 
+watch(signalRConnection, (conn, oldConn) => {
+  if (oldConn) {
+    oldConn.off("HeadcountUpdated", fetchHeadcountData);
+  }
+
+  if (conn) {
+    conn.off("HeadcountUpdated", fetchHeadcountData); // กันซ้ำ
+    conn.on("HeadcountUpdated", fetchHeadcountData);
+  }
+}, { immediate: true });
+
 // ===============================
 onMounted(async () => {
   await fetchHeadcountData();
+
+  // ✅ auto refresh ทุก 10 วินาที
+  interval = setInterval(() => {
+    fetchHeadcountData();
+  }, 10000);
 });
 </script>
 

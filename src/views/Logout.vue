@@ -1,28 +1,23 @@
 <template>
-  <button v-if="getToken()" class="btn-logout" @click="doLogout">Log out</button>
+  <button v-if="isLoggedIn" class="btn-logout" @click="doLogout">
+    Log out
+  </button>
 </template>
 
 <script setup>
 import { useRouter } from "vue-router";
-
-// ฟังก์ชันสำหรับออกจากระบบ
-function doLogout() {
-  clearToken(); // ลบ token
-  localStorage.removeItem("role"); // ลบ role
-  router.push("/"); // เปลี่ยนเส้นทางไปหน้าล็อกอิน
-}
-
-// ฟังก์ชันตรวจสอบว่า token มีอยู่ใน localStorage หรือไม่
-function getToken() {
-  return localStorage.getItem("token");
-}
-
-// ฟังก์ชันสำหรับลบ token
-function clearToken() {
-  localStorage.removeItem("token");
-}
+import { computed } from "vue";
 
 const router = useRouter();
+
+const isLoggedIn = computed(() => {
+  return !!localStorage.getItem("token");
+});
+
+function doLogout() {
+  localStorage.clear();
+  window.location.href = "/";
+}
 </script>
 
 <style scoped>

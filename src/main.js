@@ -1,20 +1,44 @@
-// src/main.js
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import Toast from 'vue-toastification';
 import 'vue-toastification/dist/index.css';
 import axios from 'axios';
-import Logout from '../src/views/Logout'
+import Logout from '../src/views/Logout';
 
-// ตั้งค่า base URL สำหรับทุกคำขอของ Axios
-axios.defaults.baseURL = 'http://localhost:5000';  // ตั้งค่า base URL ไปที่ Backend API ของคุณ
+// base URL
+axios.defaults.baseURL = 'http://localhost:5000';
 
-// ส่งออก axios เพื่อใช้งานในที่อื่นๆ
-export { axios };
+// request interceptor
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// response interceptor
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.clear();
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 const app = createApp(App);
-app.component("Logout", Logout);  // ลงทะเบียน LogoutButton เป็น global component
+
+app.component("Logout", Logout);
 
 app.use(router);
 app.use(Toast);

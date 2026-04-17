@@ -3,6 +3,12 @@
     <h3>Employee Skill</h3>
 
     <!-- ✅ Legend/Filter Buttons แบบ EmployeeRecommendation -->
+    <!-- <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap"> -->
+      <button class="refresh-skill-btn" @click="resetFilter" title="รีเซต">
+        <img src="refresh.png" alt="Refresh" class="icon" />
+        <span>Refresh</span>
+      </button>
+    <!-- </div> -->
     <div class="legend">
   <button
     v-for="level in [0,1,2,3]"
@@ -15,9 +21,9 @@
     {{ ['Not Trained','Basic','Medium','Expert'][level] }}
   </button>
 
-  <button class="refresh-skill-btn" @click="selectedSkillLevel = null">
+  <!-- <button class="refresh-skill-btn" @click="selectedSkillLevel = null">
     รีเซต
-  </button>
+  </button> -->
 </div>
 
     <div class="table-scroll">
@@ -229,11 +235,13 @@ onMounted(fetchEmployeeSkills);
   align-items: center;
   justify-content: center;
   width: 100%;
+  height: 100%;
   min-height: 36px;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
   box-sizing: border-box;
+  padding: 8px 4px;  /* ✅ เพิ่ม padding */
 }
 .cell-level-0 { background: #d1d5db; color: #374151; }
 .cell-level-1 { background: #ef4444; color: #fff; }
@@ -266,13 +274,13 @@ onMounted(fetchEmployeeSkills);
   font-size: 13px;
   box-shadow: 0 2px 6px rgba(0,0,0,.15);
   transition: background .2s, transform .2s;
-  margin-left: auto;
+  /* margin-left: auto; */
 }
 .refresh-skill-btn:hover { background: #0056b3; transform: scale(1.05); }
 .refresh-skill-btn .icon { width: 16px; height: 16px; filter: invert(1); }
 
 /* ✅ Table */
-.employee-skill-table { margin-top: 16px; }
+.employee-skill-table {  margin-top: 16px; }
 .table-scroll { max-height: 420px; overflow: auto; border-radius: 10px; border: 1px solid #e5e7eb; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { padding: 7px 9px; text-align: center; border: 1px solid #e5e7eb; }

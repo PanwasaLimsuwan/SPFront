@@ -3,9 +3,14 @@
     <div class="filter-bar">
       <label for="week-select">Select Week:</label>
       <select id="week-select" v-model="selectedWeek" @change="drawChart">
-        <option v-for="week in weekOptions" :key="week" :value="week">
-          {{ "Week " + week }}
-        </option>
+        <option 
+  v-for="week in weekOptions" 
+  :key="week.weekID" 
+  :value="week.weekID"
+>
+  Week {{ week.weekID }} 
+  ({{ week.startDate }} → {{ week.endDate }})
+</option>
       </select>
     </div>
 
@@ -51,7 +56,8 @@ const fetchWeekOptions = async () => {
     });
     weekOptions.value = res.data || [];
     if (weekOptions.value.length > 0) {
-      selectedWeek.value = weekOptions.value[weekOptions.value.length - 1];
+      // selectedWeek.value = weekOptions.value[weekOptions.value.length - 1];
+      selectedWeek.value = weekOptions.value[weekOptions.value.length - 1]?.weekID;
     } else {
       selectedWeek.value = null;
     }
@@ -136,8 +142,13 @@ const drawChart = async () => {
       insidetextanchor: "middle",
     };
 
+    const startDate = data[0]?.startDate;
+const endDate   = data[0]?.endDate;
+
     const layout = {
-      title: `Weekly Absent/Late Trend (Week ${selectedWeek.value})`,
+      // title: `Weekly Absent/Late Trend (Week ${selectedWeek.value})`,
+      title: `Weekly Absent (Week ${selectedWeek.value}) 
+  <br><span style="font-size:12px">(${startDate} → ${endDate})</span>`,
       height: 400,
       xaxis: { title: "Process", tickangle: -45 },
       margin: { l: 60, r: 20, t: 50, b: 100 },

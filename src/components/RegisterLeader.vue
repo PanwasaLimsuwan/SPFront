@@ -220,10 +220,16 @@ const getLeaders = async () => {
       }));
       
       // ตรวจสอบการลงทะเบียน
-      for (const employee of employees.value) {
-        const isRegisteredResponse = await checkIfRegistered(employee.empID);
-        employee.isRegistered = isRegisteredResponse.isRegistered;
-      }
+      // for (const employee of employees.value) {
+      //   const isRegisteredResponse = await checkIfRegistered(employee.empID);
+      //   employee.isRegistered = isRegisteredResponse.isRegistered;
+      // }
+      await Promise.all(
+  employees.value.map(async (employee) => {
+    const res = await checkIfRegistered(employee.empID);
+    employee.isRegistered = res.isRegistered;
+  })
+);
     } else {
       console.error("No leaders found or invalid data");
     }
@@ -263,7 +269,7 @@ const registerLeader = async (employee) => {
     });
     
     if (response.status === 200) {
-      alert(`Employee registered successfully as ${leaderRole}.`);
+      alert(`ลงทะเบียนพนักงานสำเร็จ ${leaderRole}.`);
       employee.isRegistered = true;
     }
   } catch (error) {
@@ -491,7 +497,7 @@ const editEmployee = async (employee) => {
     );
 
     if (responseEmployeeInfo.status === 200) {
-      alert("Employee updated successfully.");
+      alert("แก้ไขข้อมูลพนักงานสำเร็จ");
       // รีเฟรชข้อมูลที่เกี่ยวข้องหลังการแก้ไข
       // getSupervisors();  // ตัวเลือกสำหรับการรีเฟรชข้อมูล
       // getRegisteredLeaders();  // ตัวเลือกสำหรับการรีเฟรชข้อมูลจาก Admin
@@ -546,7 +552,7 @@ const deleteEmployee = async (empID) => {
   try {
     const response = await axios.delete(`http://localhost:5000/api/admin/delete/${empID}`);
     if (response.status === 200) {
-      alert('Employee deleted successfully.');
+      alert('ลบข้อมูลพนักงานสำเร็จ');
       // getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังจากการลบ
       getLeaders();
     }
