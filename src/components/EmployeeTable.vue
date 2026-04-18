@@ -55,7 +55,7 @@ export default {
   methods: {
     async fetchEmployees() {
       try {
-        const response = await axios.get("http://localhost:5000/api/EmployeeInfo"); // ดึงข้อมูลพนักงานจาก API
+        const response = await axios.get("http://16.176.50.155:5000/api/EmployeeInfo"); // ดึงข้อมูลพนักงานจาก API
         this.employees = response.data; // กำหนดข้อมูลพนักงาน
       } catch (error) {
         console.error("Error fetching employee data:", error);

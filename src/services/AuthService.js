@@ -2,8 +2,8 @@
 
 import axios from 'axios';
 
-// const API_BASE_URL = 'http://localhost:5000';
-const API_BASE_URL = 'http://localhost:5000';
+// const API_BASE_URL = 'http://16.176.50.155:5000';
+const API_BASE_URL = 'http://16.176.50.155:5000';
 
 // ฟังก์ชันการลงทะเบียนที่ Admin จะเป็นคนลงทะเบียนให้
 export async function register({ empID, firstName, lastName, email, role }) {
@@ -28,20 +28,17 @@ export async function register({ empID, firstName, lastName, email, role }) {
   }
 }
 
-// ฟังก์ชันการเข้าสู่ระบบ (ใช้ Email แทน Username)
 export async function login({ email, password }) {
-  try {
-    const { data } = await axios.post(`${API_BASE_URL}/api/Admin/login`, {
-      Email: email,    // ใช้ Email แทน Username
-      Password: password,
-    });
+  const { data } = await axios.post(`${API_BASE_URL}/api/Admin/login`, {
+    Email: email,
+    Password: password,
+  });
 
-    if (data?.token) {
-      return data.token; // ส่งคืน token
-    } else {
-      throw new Error("ไม่พบ token จากระบบ");
-    }
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Login failed');
-  }
+  sessionStorage.setItem("token", data.token);
+  sessionStorage.setItem("role", data.role);
+
+  // 🔥 แก้ตรงนี้
+  sessionStorage.setItem("mustChangePassword", String(data.mustChangePassword));
+
+  return data;
 }

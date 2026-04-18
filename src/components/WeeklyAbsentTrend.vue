@@ -1,6 +1,12 @@
 <template>
   <div id="weekly-absent-by-person">
     <div class="filter-bar">
+      <label>Year:</label>
+<select v-model="selectedYear" @change="onYearChange">
+  <option v-for="y in yearOptions" :key="y" :value="y">
+    {{ y }}
+  </option>
+</select>
       <label for="week-select">Select Week:</label>
       <select id="week-select" v-model="selectedWeek" @change="drawChart">
         <option 
@@ -34,20 +40,39 @@ const props = defineProps({
 
 const selectedWeek = ref(null);
 const weekOptions = ref([]);
+
+const selectedYear = ref(new Date().getFullYear());
+const yearOptions = ref([]);
+
 const hasData = ref(false);
 const loading = ref(false);
-const now = new Date();
 
-const API_BASE = "http://localhost:5000/api/Attendance";
+const API_BASE = "http://16.176.50.155:5000/api/Attendance";
 
 const buildFilterParams = () => ({
-  year: now.getFullYear(),
+  year: selectedYear.value,
   division:   props.filters.division   !== "ALL" ? props.filters.division   : undefined,
   department: props.filters.department !== "ALL" ? props.filters.department : undefined,
   section:    props.filters.section    !== "ALL" ? props.filters.section    : undefined,
   biz:        props.filters.biz        !== "ALL" ? props.filters.biz        : undefined,
   process:    props.filters.process    !== "ALL" ? props.filters.process    : undefined,
 });
+
+const fetchYears = async () => {
+  try {
+    const res = await axios.get(`${API_BASE}/AbsentYears`);
+    yearOptions.value = res.data || [];
+
+    // ✅ set default เฉพาะครั้งแรก
+    if (!selectedYear.value && yearOptions.value.length > 0) {
+      selectedYear.value = yearOptions.value[0];
+    }
+
+  } catch (err) {
+    console.error("❌ Error fetching years:", err);
+    yearOptions.value = [];
+  }
+};
 
 const fetchWeekOptions = async () => {
   try {
@@ -147,8 +172,9 @@ const endDate   = data[0]?.endDate;
 
     const layout = {
       // title: `Weekly Absent/Late Trend (Week ${selectedWeek.value})`,
-      title: `Weekly Absent (Week ${selectedWeek.value}) 
-  <br><span style="font-size:12px">(${startDate} → ${endDate})</span>`,
+  //     title: `Weekly Absent (Week ${selectedWeek.value}) 
+  // <br><span style="font-size:12px">(${startDate} → ${endDate})</span>`,
+  title: `Weekly Absent (Year ${selectedYear.value} - Week ${selectedWeek.value})`,
       height: 400,
       xaxis: { title: "Process", tickangle: -45 },
       margin: { l: 60, r: 20, t: 50, b: 100 },
@@ -166,9 +192,15 @@ const endDate   = data[0]?.endDate;
   }
 };
 
-const fetchAll = async () => {
-  await fetchWeekOptions();
+const onYearChange = async () => {
+  await fetchWeekOptions(); // โหลด week ใหม่ตามปี
   await drawChart();
+};
+
+const fetchAll = async () => {
+  await fetchYears();        // 🔥 โหลดปี
+  await fetchWeekOptions();  // 🔥 โหลด week ตามปี
+  await drawChart();         // 🔥 วาดกราฟ
 };
 
 onMounted(fetchAll);

@@ -30,9 +30,9 @@
 
         <div class="options">
           <label class="show-pass">
-  <input type="checkbox" v-model="showPassword" />
-  <span>Show password</span>
-</label>
+            <input type="checkbox" v-model="showPassword" />
+            <span>Show password</span>
+          </label>
           <!-- <label><input type="checkbox" v-model="remember" /> Remember me</label> -->
         </div>
 
@@ -54,91 +54,51 @@
 
 <script setup>
 import { ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import axios from "axios";
+import { useRouter } from "vue-router";
+import { login } from "../services/AuthService";
 
-// ====== Config & Helpers ======
-const API_BASE_URL = "http://localhost:5000";
-const USE_MOCK = false;
-
-function setToken(token) {
-  localStorage.setItem("token", token);
-}
-
-function clearToken() {
-  localStorage.removeItem("token");
-}
-
-function getToken() {
-  return localStorage.getItem("token");
-}
-
-// login function
-async function doLogin({ email, password }) {
-  const { data } = await axios.post(`${API_BASE_URL}/api/Admin/login`, {
-    Email: email,
-    Password: password,
-  });
-  if (!data?.token) throw new Error("ไม่พบโทเคนจากระบบ");
-  setToken(data.token);
-  // เก็บ role ไว้ใช้ต่อ
-  if (data.role) localStorage.setItem("role", data.role);
-  return data; // { token, role, ... }
-}
-
-// ====== State ======
-const route = useRoute();
 const router = useRouter();
 
-const email = ref("");  // ใช้แค่ Email สำหรับการ Login
+const email = ref("");
 const password = ref("");
-const remember = ref(true);
-const showPassword = ref(false);
 const loading = ref(false);
 const error = ref("");
-const isLogin = ref(true);  // ใช้เฉพาะ Login
+const showPassword = ref(false);
 
-// Toggle between Login and Register (จะใช้แค่ Login ตอนนี้)
-function toggleAuthMode() {
-  isLogin.value = !isLogin.value;
-}
-
-// ====== Methods ======
 async function onSubmit() {
   error.value = "";
+
   if (!email.value || !password.value) {
-    error.value = "กรุณากรอกข้อมูลทั้งหมด";
+    error.value = "กรุณากรอกข้อมูล";
     return;
   }
+
   try {
     loading.value = true;
-    const { token, role } = await doLogin({
+
+    const { role, mustChangePassword } = await login({
       email: email.value,
       password: password.value,
     });
 
-    setToken(token);
-
-    // ✅ ตรวจสอบ role และจำกัดการเข้าถึง
-    if (role === "Admin") {
-      router.push("/dashboard-admin");
-    } else if (role === "LeaderMFG") {
-      router.push("/dashboard-mfg"); // ✅ ไปยัง Dashboard MFG เท่านั้น
-    } else if (role === "LeaderHR") {
-      router.push("/dashboard-hr"); // ✅ ไปยัง Dashboard HR เท่านั้น
-    } else if (role === "Leader") {
-      // กรณีที่เป็น Leader แบบเดิม (ถ้ามี) ให้ไปหน้า Home
-      router.push("/home-dashboard");
-    } else {
-      error.value = "Invalid role. Please contact administrator.";
+    // 🔥 บังคับเปลี่ยนรหัส
+    if (mustChangePassword) {
+      router.push("/change-password");
+      return;
     }
+
+    // redirect ตาม role
+    if (role === "Admin") router.push("/dashboard-admin");
+    else if (role === "LeaderMFG") router.push("/dashboard-mfg");
+    else if (role === "LeaderHR") router.push("/dashboard-hr");
+    else router.push("/");
   } catch (e) {
-    error.value = e?.response?.data?.message || e?.message || "เข้าสู่ระบบไม่สำเร็จ";
+    error.value = e.message;
   } finally {
     loading.value = false;
   }
-}</script>
-
+}
+</script>
 
 <style scoped>
 .auth-page {

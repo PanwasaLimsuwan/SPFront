@@ -104,7 +104,7 @@ const processing = ref(false);
 const fetchPendingAssignments = async () => {
   loading.value = true;
   try {
-    const response = await axios.get('http://localhost:5000/api/Assignment/pending-for-supervisor', {
+    const response = await axios.get('http://16.176.50.155:5000/api/Assignment/pending-for-supervisor', {
       params: {
         process: props.userProcess // ส่ง process ของ user ไปด้วย
       }
@@ -129,7 +129,7 @@ const approveAssignment = async (assignmentId) => {
   
   processing.value = true;
   try {
-    await axios.post(`http://localhost:5000/api/Assignment/approve/${assignmentId}`);
+    await axios.post(`http://16.176.50.155:5000/api/Assignment/approve/${assignmentId}`);
     
     alert('Assignment approved successfully!');
     
@@ -151,7 +151,7 @@ const rejectAssignment = async (assignmentId) => {
   
   processing.value = true;
   try {
-    await axios.post(`http://localhost:5000/api/Assignment/reject/${assignmentId}`, 
+    await axios.post(`http://16.176.50.155:5000/api/Assignment/reject/${assignmentId}`, 
       JSON.stringify(reason),
       { headers: { 'Content-Type': 'application/json' } }
     );

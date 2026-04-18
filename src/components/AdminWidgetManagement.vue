@@ -255,7 +255,7 @@ import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import LogOut from '../views/Logout.vue'
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://16.176.50.155:5000/api';
 
 // State
 const widgets = ref([]);

@@ -7,12 +7,12 @@ import axios from 'axios';
 import Logout from '../src/views/Logout';
 
 // base URL
-axios.defaults.baseURL = 'http://localhost:5000';
+axios.defaults.baseURL = 'http://16.176.50.155:5000';
 
-// request interceptor
+// ✅ ใช้ sessionStorage แทน sessionStorage
 axios.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (token) {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
@@ -24,13 +24,11 @@ axios.interceptors.request.use(
 
 // response interceptor
 axios.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.clear();
-      if (window.location.pathname !== "/") {
-        window.location.href = "/";
-      }
+      sessionStorage.clear(); // 🔥 เปลี่ยน
+      window.location.href = "/";
     }
     return Promise.reject(error);
   }

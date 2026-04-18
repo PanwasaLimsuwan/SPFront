@@ -100,7 +100,7 @@
               ระดับ Skill
             </th>
             <th rowspan="2">เลือก</th>
-            <th rowspan="2">ยกเลิก</th>
+            <!-- <th rowspan="2">ยกเลิก</th> -->
           </tr>
           <tr>
             <th style="background: #eff6ff">Material</th>
@@ -254,7 +254,7 @@
                 <img src="select.png" alt="select" class="action-icon" />
               </button>
             </td>
-            <td>
+            <!-- <td>
               <button
                 class="remove-btn"
                 :disabled="!emp.assignmentStatus"
@@ -263,7 +263,7 @@
               >
                 <img src="remove.png" alt="remove" class="action-icon" />
               </button>
-            </td>
+            </td> -->
           </tr>
         </tbody>
       </table>
@@ -363,7 +363,7 @@ onMounted(() => {
 // ✅ JWT claims
 const currentUser = computed(() => {
   try {
-    return jwt_decode(localStorage.getItem("token") || "");
+    return jwt_decode(sessionStorage.getItem("token") || "");
   } catch {
     return {};
   }
@@ -558,14 +558,14 @@ const isLeader = (emp) =>
 const fetchData = async () => {
   try {
     const [skillRes, wtRes, faceRes, activeRes] = await Promise.all([
-      axios.get("http://localhost:5000/api/Skill"),
-      axios.get("http://localhost:5000/api/EICCControl/latest"),
-      axios.get("http://localhost:5000/api/Transactions/GetFaceEntry", {
+      axios.get("http://16.176.50.155:5000/api/Skill"),
+      axios.get("http://16.176.50.155:5000/api/EICCControl/latest"),
+      axios.get("http://16.176.50.155:5000/api/Transactions/GetFaceEntry", {
         params: {
           biz: props.filters?.biz !== "ALL" ? props.filters?.biz : undefined,
         },
       }),
-      axios.get("http://localhost:5000/api/Assignment"),
+      axios.get("http://16.176.50.155:5000/api/Assignment"),
     ]);
     skills.value = skillRes.data || [];
     const raw = faceRes.data;
@@ -635,7 +635,7 @@ const saveAssignment = async () => {
   };
   try {
     const res = await axios.post(
-      "http://localhost:5000/api/Assignment",
+      "http://16.176.50.155:5000/api/Assignment",
       payload
     );
     if (res.status === 200) {
@@ -649,7 +649,7 @@ const saveAssignment = async () => {
         } อนุมัติ)`
       );
       await axios
-        .post("http://localhost:5000/api/Assignment/notify", {
+        .post("http://16.176.50.155:5000/api/Assignment/notify", {
           empID: payload.EmpID,
           fromBiz: payload.FromBiz,
           fromProcess: payload.FromProcess,
@@ -687,7 +687,7 @@ const runAutoAssign = async () => {
     : new Date().toISOString().split("T")[0];
   try {
     const res = await axios.post(
-      "http://localhost:5000/api/Assignment/auto-assign",
+      "http://16.176.50.155:5000/api/Assignment/auto-assign",
       {
         process: selectedProcess.value,
         toBiz: resolvedBiz,
@@ -714,10 +714,10 @@ const updateEndAt = async (empID) => {
     );
     if (found?.assignmentID)
       await axios.put(
-        `http://localhost:5000/api/Assignment/${found.assignmentID}/status?status=Completed`
+        `http://16.176.50.155:5000/api/Assignment/${found.assignmentID}/status?status=Completed`
       );
     else
-      await axios.put(`http://localhost:5000/api/Assignment/${empID}`, {
+      await axios.put(`http://16.176.50.155:5000/api/Assignment/${empID}`, {
         EndAt: new Date().toISOString(),
         Status: "Completed",
       });

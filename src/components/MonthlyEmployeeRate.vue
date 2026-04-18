@@ -20,7 +20,7 @@ export default {
   methods: {
     async fetchResignationData() {
       try {
-        const response = await axios.get("http://localhost:5000/api/HeadcountTransition");
+        const response = await axios.get("http://16.176.50.155:5000/api/HeadcountTransition");
         // คัดกรองเฉพาะพนักงานที่ลาออก (transType === "Resign")
         this.resignationData = response.data.filter(entry => entry.transType === "Resign");
       } catch (error) {

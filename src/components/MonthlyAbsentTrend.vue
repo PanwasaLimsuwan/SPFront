@@ -41,7 +41,7 @@ const fetchAbsentData = async () => {
   hasData.value = false;
 
   try {
-    const res = await axios.get('http://localhost:5000/api/Attendance', {
+    const res = await axios.get('http://16.176.50.155:5000/api/Attendance', {
       params: {
         division:   props.filters?.division   !== 'ALL' ? props.filters.division   : undefined,
         department: props.filters?.department !== 'ALL' ? props.filters.department : undefined,
@@ -125,7 +125,7 @@ const fetchAbsentData = async () => {
 // เพิ่มฟังก์ชันนี้
 const fetchYears = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/Attendance/AbsentYears');
+    const res = await axios.get('http://16.176.50.155:5000/api/Attendance/AbsentYears');
     const data = res.data || [];
     years.value = data.length > 0 ? data : [new Date().getFullYear()];
   } catch (err) {
@@ -137,7 +137,7 @@ const fetchYears = async () => {
 // ✅ ดึงเดือน/ปีล่าสุดที่มี Absent ใน DB
 const fetchLatestMonthYear = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/Attendance/AbsentLatest');
+    const res = await axios.get('http://16.176.50.155:5000/api/Attendance/AbsentLatest');
     if (res.data) {
       selectedYear.value  = res.data.year;
       selectedMonth.value = res.data.month;

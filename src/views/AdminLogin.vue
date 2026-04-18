@@ -58,19 +58,19 @@ import axios from "axios";
 import bcrypt from 'bcryptjs'; // ใช้ bcrypt สำหรับการแฮชรหัสผ่าน
 
 // ====== Config & Helpers ======
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "http://16.176.50.155:5000";
 const USE_MOCK = false;
 
 function setToken(token) {
-  localStorage.setItem("token", token);
+  sessionStorage.setItem("token", token);
 }
 
 function clearToken() {
-  localStorage.removeItem("token");
+  sessionStorage.removeItem("token");
 }
 
 function getToken() {
-  return localStorage.getItem("token");
+  return sessionStorage.getItem("token");
 }
 
 // login function (mock หรือ api จริง)

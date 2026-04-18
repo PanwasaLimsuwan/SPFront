@@ -56,7 +56,7 @@ const fetchWorkTimeData = async () => {
     hasData.value = false;
 
     const response = await axios.get(
-      "http://localhost:5000/api/EICCControl/MonthlySummary",
+      "http://16.176.50.155:5000/api/EICCControl/MonthlySummary",
       { params: buildParams() }
     );
 

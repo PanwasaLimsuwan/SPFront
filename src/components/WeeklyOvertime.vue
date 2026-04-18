@@ -1,6 +1,17 @@
 <template>
   <div id="worktime-chart-container">
     <div class="filter-bar">
+      <label for="year-select">Select Year:</label>
+      <select
+        id="year-select"
+        v-model="selectedYear"
+        @change="onYearChange"
+        :disabled="loading || yearOptions.length === 0"
+      >
+        <option v-for="year in yearOptions" :key="year" :value="year">
+          {{ year }}
+        </option>
+      </select>
       <label for="week-select">Select Week:</label>
       <select
         id="week-select"
@@ -47,10 +58,44 @@ const emit = defineEmits(["filter"]);
 
 const workTimeData = ref([]);
 const hasData = ref(true);
+
 const weekOptions = ref([]);
 const selectedWeek = ref(null);
+
+const yearOptions = ref([]);
+const selectedYear = ref(null);
+
 const loading = ref(false);
 const errorMessage = ref("");
+
+const onYearChange = () => {
+  // rebuild weekOptions ใหม่ตามปี
+  const weekMap = {};
+
+  workTimeData.value.forEach((item) => {
+    if (item.year !== selectedYear.value) return;
+
+    if (item.weekID != null && !weekMap[item.weekID]) {
+      const start = item.weekStart || "";
+      const end = item.weekEnd || "";
+
+      weekMap[item.weekID] = {
+        weekID: item.weekID,
+        startDate: start ? new Date(start).toISOString().substring(0, 10) : "",
+        endDate: end ? new Date(end).toISOString().substring(0, 10) : "",
+      };
+    }
+  });
+
+  weekOptions.value = Object.values(weekMap).sort(
+    (a, b) => a.weekID - b.weekID
+  );
+
+  if (weekOptions.value.length > 0) {
+    selectedWeek.value = weekOptions.value[weekOptions.value.length - 1].weekID;
+    updateChart();
+  }
+};
 
 // ✅ กำหนดสีตามชื่อ process
 const colorMapping = {
@@ -87,6 +132,10 @@ const colorMapping = {
 const buildParams = (includeWeekID = false) => {
   const params = {};
 
+  if (selectedYear.value) {
+    params.year = selectedYear.value;
+  }
+
   if (props.filters?.division && props.filters.division !== "ALL") {
     params.division = props.filters.division;
   }
@@ -117,7 +166,7 @@ const fetchWorkTimeData = async () => {
     errorMessage.value = "";
 
     const params = buildParams(false);
-    const response = await axios.get("http://localhost:5000/api/EICCControl", {
+    const response = await axios.get("http://16.176.50.155:5000/api/EICCControl", {
       params,
     });
 
@@ -132,9 +181,26 @@ const fetchWorkTimeData = async () => {
     workTimeData.value = response.data;
     console.log("Sample data:", response.data.slice(0, 1)); // ✅ ดูชื่อ field จริงๆ
 
+    // ✅ ดึง year จาก backend
+    const yearSet = new Set();
+
+    workTimeData.value.forEach((item) => {
+      if (item.year) {
+        yearSet.add(item.year);
+      }
+    });
+
+    yearOptions.value = Array.from(yearSet).sort((a, b) => a - b);
+
+    // default ปีล่าสุด
+    if (!selectedYear.value && yearOptions.value.length > 0) {
+      selectedYear.value = yearOptions.value[yearOptions.value.length - 1];
+    }
+
     // ✅ สร้าง weekOptions แบบ object
     const weekMap = {};
     workTimeData.value.forEach((item) => {
+      if (selectedYear.value && item.year !== selectedYear.value) return;
       if (item.weekID != null && !weekMap[item.weekID]) {
         // ✅ ลองทั้งสองรูปแบบชื่อ field
         const start = item.weekStart || "";

@@ -38,18 +38,18 @@ import jwt_decode from "jwt-decode";
 // import { jwtDecode } from "jwt-decode";
 // const jwt_decode = require("jwt-decode");
 
-const API_BASE = "http://localhost:5000/api";
-const AUTH_TOKEN = localStorage.getItem("token"); // จาก /api/admin/login ที่คุณมีอยู่
+const API_BASE = "http://16.176.50.155:5000/api";
+const AUTH_TOKEN = sessionStorage.getItem("token"); // จาก /api/admin/login ที่คุณมีอยู่
 
 const api = axios.create({ baseURL: API_BASE });
 api.interceptors.request.use((cfg) => {
-  const t = localStorage.getItem("token"); // อ่านสดทุกครั้ง
+  const t = sessionStorage.getItem("token"); // อ่านสดทุกครั้ง
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
   return cfg;
 });
 
 const connection = new signalR.HubConnectionBuilder()
-  .withUrl("http://localhost:5000/notificationHub")
+  .withUrl("http://16.176.50.155:5000/notificationHub")
   .withAutomaticReconnect()
   .build();
 
@@ -80,7 +80,7 @@ const refreshBarChart = () => {
 };
 
 // ✅ แก้ — ย้ายมาระดับ setup (นอก onMounted)
-const signalRConnection = ref(null);           // ← ระดับ setup
+const signalRConnection = ref(null); // ← ระดับ setup
 provide("signalRConnection", signalRConnection);
 
 // ✅ provide ให้ EmployeeRecommendations ใช้ได้
@@ -126,7 +126,7 @@ const processes = computed(() => [
 
 //   // โหลด employee
 //   try {
-//     const response = await axios.get("http://localhost:5000/api/EmployeeInfo");
+//     const response = await axios.get("http://16.176.50.155:5000/api/EmployeeInfo");
 //     employees.value = response.data;
 //   } catch (error) {
 //     console.error(error);
@@ -581,7 +581,7 @@ onMounted(async () => {
   console.log("🚀 Dashboard mounting...");
 
   try {
-    const response = await axios.get("http://localhost:5000/api/EmployeeInfo");
+    const response = await axios.get("http://16.176.50.155:5000/api/EmployeeInfo");
     employees.value = response.data;
   } catch (error) {
     console.error(error);
@@ -608,9 +608,11 @@ onMounted(async () => {
     widgets.value = [...orderedWidgets, ...newWidgets];
   } else {
     widgets.value = builtWidgets;
+
+    initVisibilityDefault(); //แสดงทุกกราฟถ้าไม่มีdataของwidgetที่saveในDB
   }
 
-  initVisibilityDefault();
+  // initVisibilityDefault();
   fetchAssignmentsStatus();
   setInterval(fetchAssignmentsStatus, 5000);
 
@@ -700,27 +702,27 @@ watch(
 // ฟังก์ชันที่จะบันทึกการตั้งค่า widget
 // หลังจากบันทึกการตั้งค่า widget เสร็จ
 const saveWidgetSettings = async () => {
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
 
   if (token) {
     try {
-      const decodedToken = jwt_decode(token);
-      const userEmail = decodedToken.sub; // ใช้ sub (อีเมลของผู้ใช้)
+      // const decodedToken = jwt_decode(token);
+      // const userEmail = decodedToken.sub; // ใช้ sub (อีเมลของผู้ใช้)
 
-      if (!userEmail) {
-        console.error("User email (sub) not found in token");
-        return;
-      }
+      // if (!userEmail) {
+      //   console.error("User email (sub) not found in token");
+      //   return;
+      // }
 
       // ค้นหาข้อมูล user_id จากฐานข้อมูลโดยใช้ userEmail
-      const response = await axios.get(
-        `http://localhost:5000/api/admin/get-user-id?email=${userEmail}`
-      );
-      const user_id = response.data.user_id;
-      if (!user_id) {
-        console.error("User ID not found in database");
-        return;
-      }
+      // const response = await axios.get(
+      //   `http://16.176.50.155:5000/api/admin/get-user-id?email=${userEmail}`
+      // );
+      // const user_id = response.data.user_id;
+      // if (!user_id) {
+      //   console.error("User ID not found in database");
+      //   return;
+      // }
 
       // กำหนด settings สำหรับ widgets และลำดับใหม่
       const settings = {
@@ -734,9 +736,9 @@ const saveWidgetSettings = async () => {
       const settingsJson = JSON.stringify(settings);
 
       const saveResponse = await axios.post(
-        "http://localhost:5000/api/widget/save-widget-settings",
+        "http://16.176.50.155:5000/api/widget/save-widget-settings",
         {
-          user_id: user_id, // ส่ง user_id ที่ได้จากฐานข้อมูล
+          // user_id: user_id, // ส่ง user_id ที่ได้จากฐานข้อมูล
           settings: settingsJson,
         }
       );
@@ -745,7 +747,7 @@ const saveWidgetSettings = async () => {
       // เรียก fetchWidgetSettings เพื่อโหลดการตั้งค่าใหม่หลังจากบันทึก
       // await fetchWidgetSettings(); // เรียกฟังก์ชันเพื่อดึงข้อมูลใหม่หลังจากบันทึกเสร็จ
       // ✅ แทนที่ด้วยการอัพเดท retrievedIds
-      retrievedIds.value = widgets.value.map((w) => w.id);
+      // retrievedIds.value = widgets.value.map((w) => w.id);
     } catch (error) {
       console.error("Error saving widget settings:", error);
     }
@@ -756,7 +758,7 @@ const saveWidgetSettings = async () => {
 
 // ฟังก์ชันดึงข้อมูลการตั้งค่าของ Widget จากฐานข้อมูล
 // const fetchWidgetSettings = async () => {
-//   const token = localStorage.getItem("token");
+//   const token = sessionStorage.getItem("token");
 
 //   if (token) {
 //     try {
@@ -769,7 +771,7 @@ const saveWidgetSettings = async () => {
 //       }
 
 //       const response = await axios.get(
-//         `http://localhost:5000/api/admin/get-user-id?email=${userEmail}`
+//         `http://16.176.50.155:5000/api/admin/get-user-id?email=${userEmail}`
 //       );
 //       const user_id = response.data.user_id;
 //       if (!user_id) {
@@ -779,7 +781,7 @@ const saveWidgetSettings = async () => {
 
 //       // ดึงข้อมูล widget settings สำหรับ user_id นี้
 //       const widgetResponse = await axios.get(
-//         `http://localhost:5000/api/widget/get-widget-settings/${user_id}`
+//         `http://16.176.50.155:5000/api/widget/get-widget-settings/${user_id}`
 //       );
 
 //       // console.log("Widget settings response:", widgetResponse.data);
@@ -827,56 +829,79 @@ const saveWidgetSettings = async () => {
 //   }
 // };
 // แก้ไข fetchWidgetSettings ให้ return ค่า settings
+// const fetchWidgetSettings = async () => {
+//   const token = sessionStorage.getItem("token");
+
+//   if (!token) {
+//     console.error("No token found");
+//     return null;
+//   }
+
+//   try {
+//     const decodedToken = jwt_decode(token);
+//     const userEmail = decodedToken.sub;
+
+//     if (!userEmail) {
+//       console.error("User email (sub) not found in token");
+//       return null;
+//     }
+
+//     // ดึง user_id
+//     const response = await axios.get(
+//       `http://16.176.50.155:5000/api/admin/get-user-id?email=${userEmail}`
+//     );
+//     const user_id = response.data.user_id;
+
+//     if (!user_id) {
+//       console.error("User ID not found in database");
+//       return null;
+//     }
+
+//     // ดึง widget settings
+//     const widgetResponse = await axios.get(
+//       `http://16.176.50.155:5000/api/widget/get-widget-settings/${user_id}`
+//     );
+
+//     console.log("📥 Widget settings loaded:", widgetResponse.data);
+
+//     if (!widgetResponse.data?.widgets) {
+//       console.warn("No saved widgets found, will use default order");
+//       return null;
+//     }
+
+//     // อัพเดท visibility
+//     const settings = widgetResponse.data.widgets;
+//     settings.forEach((setting) => {
+//       visibility.value[setting.id] = setting.visibility;
+//     });
+
+//     // return widget IDs order
+//     return settings.map((w) => w.id);
+//   } catch (error) {
+//     console.error("Error fetching widget settings:", error);
+//     return null;
+//   }
+// };
 const fetchWidgetSettings = async () => {
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    console.error("No token found");
-    return null;
-  }
-
   try {
-    const decodedToken = jwt_decode(token);
-    const userEmail = decodedToken.sub;
-
-    if (!userEmail) {
-      console.error("User email (sub) not found in token");
-      return null;
-    }
-
-    // ดึง user_id
-    const response = await axios.get(
-      `http://localhost:5000/api/admin/get-user-id?email=${userEmail}`
-    );
-    const user_id = response.data.user_id;
-
-    if (!user_id) {
-      console.error("User ID not found in database");
-      return null;
-    }
-
-    // ดึง widget settings
-    const widgetResponse = await axios.get(
-      `http://localhost:5000/api/widget/get-widget-settings/${user_id}`
+    const res = await axios.get(
+      "http://16.176.50.155:5000/api/widget/get-my-widget-settings"
     );
 
-    console.log("📥 Widget settings loaded:", widgetResponse.data);
+    const data = res.data;
 
-    if (!widgetResponse.data?.widgets) {
-      console.warn("No saved widgets found, will use default order");
-      return null;
-    }
+    if (!data?.widgets) return null;
 
-    // อัพเดท visibility
-    const settings = widgetResponse.data.widgets;
-    settings.forEach((setting) => {
+    // reset ก่อน (สำคัญ)
+    visibility.value = {};
+
+    data.widgets.forEach((setting) => {
       visibility.value[setting.id] = setting.visibility;
     });
 
-    // return widget IDs order
-    return settings.map((w) => w.id);
-  } catch (error) {
-    console.error("Error fetching widget settings:", error);
+    return data.widgets.map((w) => w.id);
+  } catch (err) {
+    console.error(err);
     return null;
   }
 };
@@ -911,6 +936,12 @@ watch(
   },
   { deep: true }
 );
+
+watch(panelOpen, (val) => {
+  if (!val) {
+    saveWidgetSettings(); // ปิด panel แล้ว save
+  }
+});
 
 // ❌ ลบ onModelValueUpdate ออก (ไม่จำเป็น)
 // const onModelValueUpdate = (newValue) => {
@@ -950,7 +981,7 @@ const handleBarClick = (data) => {
 
 const handleLogout = async () => {
   await saveWidgetSettings(); // บันทึกการตั้งค่าก่อน logout
-  localStorage.removeItem("token");
+  sessionStorage.removeItem("token");
   window.location.href = "/";
 };
 
@@ -961,7 +992,7 @@ const onModelValueUpdate = (newValue) => {
 
 const fetchAssignmentsStatus = async () => {
   try {
-    const response = await axios.get("http://localhost:5000/api/Assignment", {
+    const response = await axios.get("http://16.176.50.155:5000/api/Assignment", {
       params: {
         status: "Pending", // เฉพาะงานที่ยังรอการอนุมัติ
       },
@@ -1174,7 +1205,11 @@ function hideAll() {
             :is="element.comp"
             v-bind="element.binds()"
             v-on="element.on()"
-            :ref="(el) => { if (element.id === 'requiredBar') requiredBarChartRef = el; }"
+            :ref="
+              (el) => {
+                if (element.id === 'requiredBar') requiredBarChartRef = el;
+              }
+            "
           />
         </div>
       </template>

@@ -15,7 +15,7 @@ onMounted(async () => {
 
 const fetchTrainingData = async () => {
   try {
-    const response = await axios.get('http://localhost:5000/api/OJTandInspectionSkill', {
+    const response = await axios.get('http://16.176.50.155:5000/api/OJTandInspectionSkill', {
       params: {
         division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
         department: props.filters.department !== 'ALL' ? props.filters.department : undefined,

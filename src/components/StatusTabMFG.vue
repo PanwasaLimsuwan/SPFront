@@ -61,7 +61,7 @@ export default {
     async fetchFaceEntryData() {
       try {
         const response = await axios.get(
-          "http://localhost:5000/api/Transactions/GetFaceEntry",
+          "http://16.176.50.155:5000/api/Transactions/GetFaceEntry",
           {
             params: {
               division:

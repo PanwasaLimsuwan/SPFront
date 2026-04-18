@@ -25,7 +25,7 @@ const signalRConnection = inject("signalRConnection", ref(null));
 // ✅ JWT claims สำหรับเช็ค permission
 const currentUser = computed(() => {
   try {
-    return jwt_decode(localStorage.getItem("token") || "");
+    return jwt_decode(sessionStorage.getItem("token") || "");
   } catch {
     return {};
   }
@@ -147,7 +147,7 @@ const drawChart = async () => {
 
 const fetchData = async () => {
   try {
-    const res = await axios.get("http://localhost:5000/api/ManpowerReq/latest", {
+    const res = await axios.get("http://16.176.50.155:5000/api/ManpowerReq/latest", {
       params: {
         division:   props.filters.division   !== "ALL" ? props.filters.division   : undefined,
         department: props.filters.department !== "ALL" ? props.filters.department : undefined,

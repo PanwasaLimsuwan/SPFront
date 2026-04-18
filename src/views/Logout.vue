@@ -1,21 +1,12 @@
 <template>
-  <button v-if="isLoggedIn" class="btn-logout" @click="doLogout">
+  <button class="btn-logout" @click="doLogout">
     Log out
   </button>
 </template>
 
 <script setup>
-import { useRouter } from "vue-router";
-import { computed } from "vue";
-
-const router = useRouter();
-
-const isLoggedIn = computed(() => {
-  return !!localStorage.getItem("token");
-});
-
 function doLogout() {
-  localStorage.clear();
+  sessionStorage.clear();
   window.location.href = "/";
 }
 </script>
@@ -30,7 +21,6 @@ function doLogout() {
   font-weight: bold;
   cursor: pointer;
 }
-
 .btn-logout:hover {
   background-color: #ef5350;
 }

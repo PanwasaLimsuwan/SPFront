@@ -35,7 +35,7 @@ const fetchHeadcountData = async () => {
   try {
     loading.value = true;
 
-    const response = await axios.get("http://localhost:5000/api/HeadcountTransition", {
+    const response = await axios.get("http://16.176.50.155:5000/api/HeadcountTransition", {
       params: {
         division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
         department: props.filters.department !== 'ALL' ? props.filters.department : undefined,

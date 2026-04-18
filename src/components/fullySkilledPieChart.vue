@@ -17,7 +17,7 @@ const needTrainingCounts = ref([]);
 const fetchSkillData = async () => {
   try {
     const response = await fetch(
-      `http://localhost:5000/api/Skill?division=${
+      `http://16.176.50.155:5000/api/Skill?division=${
         props.filters.division !== "ALL" ? props.filters.division : ""
       }&department=${
         props.filters.department !== "ALL" ? props.filters.department : ""

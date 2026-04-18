@@ -23,7 +23,7 @@ const loading = ref(false);
 const requestPasswordReset = async () => {
   loading.value = true;
   try {
-    await axios.post('http://localhost:5000/api/admin/forgot-password', { Email: email.value });
+    await axios.post('http://16.176.50.155:5000/api/admin/forgot-password', { Email: email.value });
     alert('Password reset email sent');
   } catch (err) {
     error.value = err.response.data || 'An error occurred';

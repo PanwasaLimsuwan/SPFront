@@ -25,7 +25,7 @@ watch(selectedGroup, drawChart);
 
 async function fetchData() {
   try {
-    const res = await axios.get('http://localhost:5000/api/Attendance/ByDate');
+    const res = await axios.get('http://16.176.50.155:5000/api/Attendance/ByDate');
     employees.value = Array.isArray(res.data.data) ? res.data.data : [];
     drawChart();
   } catch (err) {

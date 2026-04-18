@@ -12,7 +12,7 @@ module.exports = {
     },
   },
   devServer: {
-    // proxy: 'http://localhost:5000', // กำหนดให้ Proxy ไปที่ API ที่กำลังรันอยู่ที่ localhost:5000
-    proxy: 'http://localhost:5000',
+    // proxy: 'http://16.176.50.155:5000', // กำหนดให้ Proxy ไปที่ API ที่กำลังรันอยู่ที่ localhost:5000
+    proxy: 'http://16.176.50.155:5000',
   },
 }

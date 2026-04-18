@@ -185,7 +185,7 @@ const sortedEmployees = computed(() => {
 // ฟังก์ชันดึงข้อมูลพนักงานจาก API
 // const getSupervisors = async () => {
 //   try {
-//     const response = await axios.get('http://localhost:5000/api/EmployeeInfo/get-supervisors');
+//     const response = await axios.get('http://16.176.50.155:5000/api/EmployeeInfo/get-supervisors');
 //     if (response.data && response.data.length > 0) {
 //       // ตรวจสอบว่าพนักงานแต่ละคนลงทะเบียนแล้วหรือยัง
 //       employees.value = response.data.map(employee => ({
@@ -209,7 +209,7 @@ const sortedEmployees = computed(() => {
 // เปลี่ยนชื่อฟังก์ชันและเพิ่ม Role mapping
 const getLeaders = async () => {
   try {
-    const response = await axios.get('http://localhost:5000/api/EmployeeInfo/get-leaders');
+    const response = await axios.get('http://16.176.50.155:5000/api/EmployeeInfo/get-leaders');
     if (response.data && response.data.length > 0) {
       employees.value = response.data.map(employee => ({
         ...employee,
@@ -259,12 +259,12 @@ const registerLeader = async (employee) => {
                      employee.position === 'Officer' ? 'LeaderHR' : 'Leader';
   
   try {
-    const response = await axios.post('http://localhost:5000/api/admin/register-leader', {
+    const response = await axios.post('http://16.176.50.155:5000/api/admin/register-leader', {
       EmpID: employee.empID,
       FirstName: employee.firstName,
       LastName: employee.lastName,
       Email: employee.email,
-      PasswordHash: defaultPassword,
+      Password: defaultPassword,
       Role: leaderRole  // ส่ง Role ที่แยกแล้ว
     });
     
@@ -296,7 +296,7 @@ const generateRandomPassword = (length = 8) => {
 // ฟังก์ชันตรวจสอบว่าพนักงานได้ลงทะเบียนหรือยัง
 const checkIfRegistered = async (empID) => {
   try {
-    const response = await axios.get(`http://localhost:5000/api/admin/check-registration-leader?empID=${empID}`);
+    const response = await axios.get(`http://16.176.50.155:5000/api/admin/check-registration-leader?empID=${empID}`);
     return response.data;
   } catch (error) {
     console.error('Error checking registration:', error);
@@ -340,7 +340,7 @@ const closeEditForm = () => {
 
 //   const defaultPassword = generateRandomPassword(12);
 //   try {
-//     const response = await axios.post('http://localhost:5000/api/admin/register-leader', {
+//     const response = await axios.post('http://16.176.50.155:5000/api/admin/register-leader', {
 //       EmpID: employee.empID,
 //       FirstName: employee.firstName,
 //       LastName: employee.lastName,
@@ -360,7 +360,7 @@ const closeEditForm = () => {
 //   }
 
 //   // try {
-//   //   const response = await axios.post('http://localhost:5000/api/admin/register-leader', {
+//   //   const response = await axios.post('http://16.176.50.155:5000/api/admin/register-leader', {
 //   //     EmpID: employee.empID,
 //   //     FirstName: employee.firstName,
 //   //     LastName: employee.lastName,
@@ -382,7 +382,7 @@ const closeEditForm = () => {
 const getRegisteredLeaders = async () => {
   try {
     // ดึงข้อมูลจาก Admin หลังการลงทะเบียน
-    const response = await axios.get('http://localhost:5000/api/admin/get-admins'); // ใช้ API ที่ดึงข้อมูลจาก Admin
+    const response = await axios.get('http://16.176.50.155:5000/api/admin/get-admins'); // ใช้ API ที่ดึงข้อมูลจาก Admin
     if (response.data && response.data.length > 0) {
       employees.value = response.data;
     } else {
@@ -474,7 +474,7 @@ const editEmployee = async (employee) => {
   try {
   // อัปเดตข้อมูลพนักงานใน admin
   const responseAdmin = await axios.put(
-    `http://localhost:5000/api/admin/edit/${updatedData.EmpID}`, // URL สำหรับการอัปเดตข้อมูลใน admin
+    `http://16.176.50.155:5000/api/admin/edit/${updatedData.EmpID}`, // URL สำหรับการอัปเดตข้อมูลใน admin
     updatedData,  // ข้อมูลที่ต้องการอัปเดต
     {
       headers: {
@@ -487,7 +487,7 @@ const editEmployee = async (employee) => {
   if (responseAdmin.status === 200) {
     // อัปเดตข้อมูลพนักงานใน EmployeeInfo
     const responseEmployeeInfo = await axios.put(
-      `http://localhost:5000/api/EmployeeInfo/edit/${updatedData.EmpID}`, // URL สำหรับการอัปเดตข้อมูลใน EmployeeInfo
+      `http://16.176.50.155:5000/api/EmployeeInfo/edit/${updatedData.EmpID}`, // URL สำหรับการอัปเดตข้อมูลใน EmployeeInfo
       updatedData,  // ข้อมูลที่ต้องการอัปเดต
       {
         headers: {
@@ -527,9 +527,9 @@ const editEmployee = async (employee) => {
 
 //   try {
 //     // เริ่มต้นการอัปเดตทั้งสองตาราง
-//     const responseEmployee = await axios.put(`http://localhost:5000/api/EmployeeInfo/edit/${updatedData.EmpID}`, updatedData);  // อัปเดตใน EmployeeInfo
+//     const responseEmployee = await axios.put(`http://16.176.50.155:5000/api/EmployeeInfo/edit/${updatedData.EmpID}`, updatedData);  // อัปเดตใน EmployeeInfo
 //     if (responseEmployee.status === 200) {
-//       const responseAdmin = await axios.put(`http://localhost:5000/api/admin/edit/${updatedData.EmpID}`, updatedData);  // อัปเดตใน Admin
+//       const responseAdmin = await axios.put(`http://16.176.50.155:5000/api/admin/edit/${updatedData.EmpID}`, updatedData);  // อัปเดตใน Admin
 //       if (responseAdmin.status === 200) {
 //         alert("Employee information updated successfully.");
 //         getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังการอัปเดต
@@ -550,7 +550,7 @@ const deleteEmployee = async (empID) => {
   }
 
   try {
-    const response = await axios.delete(`http://localhost:5000/api/admin/delete/${empID}`);
+    const response = await axios.delete(`http://16.176.50.155:5000/api/admin/delete/${empID}`);
     if (response.status === 200) {
       alert('ลบข้อมูลพนักงานสำเร็จ');
       // getSupervisors();  // รีเฟรชข้อมูลพนักงานหลังจากการลบ

@@ -107,7 +107,7 @@ import axios from 'axios';
 import draggable from 'vuedraggable'; // ✅ Add draggable component
 import StatusTabMFG from "../components/StatusTabMFG.vue"; // Status Tab Widget
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://16.176.50.155:5000/api';
 const employees = ref([]);
 const selectedProcess = ref(null);  // Add reference for selectedProcess
 const selectedSkill = ref(null);    // Add reference for selectedSkill
@@ -146,7 +146,7 @@ const hideAll = () => {
 const editItem = async (item, widgetId) => {
   try {
     const updatedData = { ...item, updatedAt: new Date() };
-    const response = await axios.put(`http://localhost:5000/api/${widgetId}/edit`, updatedData);
+    const response = await axios.put(`http://16.176.50.155:5000/api/${widgetId}/edit`, updatedData);
 
     if (response.status === 200) {
       alert('Item updated successfully');
@@ -161,7 +161,7 @@ const editItem = async (item, widgetId) => {
 // Function to delete item from widget
 const deleteItem = async (itemId, widgetId) => {
   try {
-    const response = await axios.delete(`http://localhost:5000/api/${widgetId}/delete/${itemId}`);
+    const response = await axios.delete(`http://16.176.50.155:5000/api/${widgetId}/delete/${itemId}`);
     if (response.status === 200) {
       alert('Item deleted successfully');
       fetchWidgetData(widgetId);
@@ -175,7 +175,7 @@ const deleteItem = async (itemId, widgetId) => {
 // Function to fetch widget data after editing/deleting
 const fetchWidgetData = async (widgetId) => {
   try {
-    const response = await axios.get(`http://localhost:5000/api/${widgetId}`);
+    const response = await axios.get(`http://16.176.50.155:5000/api/${widgetId}`);
     if (response.data) {
       updateWidgetData(widgetId, response.data);  // Update widget data
     }

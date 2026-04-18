@@ -81,7 +81,7 @@ export default {
   },
   computed: {
     username() {
-      return localStorage.getItem("username") || "Guest User";
+      return sessionStorage.getItem("username") || "Guest User";
     },
     userInitial() {
       const n = this.username?.trim();

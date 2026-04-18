@@ -55,7 +55,7 @@ export default {
     async fetchAttendanceData() {
   try {
     const response = await axios.get(
-      'http://localhost:5000/api/Attendance/ByDate',
+      'http://16.176.50.155:5000/api/Attendance/ByDate',
       {
         params: {
           division:   this.filters.division   !== 'ALL' ? this.filters.division   : undefined,
@@ -86,7 +86,7 @@ export default {
     // async fetchTransactionsData() {
     //   try {
     //     const response = await axios.get(
-    //       "http://localhost:5000/api/Transactions/GetFaceEntry",
+    //       "http://16.176.50.155:5000/api/Transactions/GetFaceEntry",
     //       {
     //         params: {
     //           division:

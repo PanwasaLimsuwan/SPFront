@@ -19,7 +19,7 @@ let interval = null;
 // const fetchEmployees = async () => {
 //   isLoading.value = true;
 //   try {
-//     const response = await axios.get('http://localhost:5000/api/Attendance/ByDate', {
+//     const response = await axios.get('http://16.176.50.155:5000/api/Attendance/ByDate', {
 //       params: {
 //         division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
 //         department: props.filters.department !== 'ALL' ? props.filters.department : undefined,
@@ -40,7 +40,7 @@ let interval = null;
 const fetchAttendanceData = async () => {
   try {
     const response = await axios.get(
-      'http://localhost:5000/api/Attendance/ByDate',
+      'http://16.176.50.155:5000/api/Attendance/ByDate',
       {
         params: {
           division:   props.filters.division   !== 'ALL' ? props.filters.division   : undefined,
@@ -64,7 +64,7 @@ const fetchAttendanceData = async () => {
 // ✅ ดึงข้อมูลจาก Transactions (Missing)
 // const fetchTransactionsData = async () => {
 //   try {
-//     const response = await axios.get('http://localhost:5000/api/Transactions/GetFaceEntry', {
+//     const response = await axios.get('http://16.176.50.155:5000/api/Transactions/GetFaceEntry', {
 //       params: {
 //         division: props.filters.division !== 'ALL' ? props.filters.division : undefined,
 //         department: props.filters.department !== 'ALL' ? props.filters.department : undefined,

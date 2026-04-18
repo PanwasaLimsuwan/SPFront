@@ -19,7 +19,7 @@ const emit = defineEmits(['clear-employee']);
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://localhost:5000/api/Attendance/ByDate');
+    const response = await axios.get('http://16.176.50.155:5000/api/Attendance/ByDate');
     // ✅ เปลี่ยนจาก response.data เป็น response.data.data
     employees.value = Array.isArray(response.data.data) ? response.data.data : [];
     filteredEmployees.value = employees.value;

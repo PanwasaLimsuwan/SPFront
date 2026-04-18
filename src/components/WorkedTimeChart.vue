@@ -1,6 +1,16 @@
 <template>
   <div class="chart-container">
     <div class="filter-bar">
+      <label for="year-select">Select Year:</label>
+<select
+  id="year-select"
+  v-model="selectedYear"
+  @change="onYearChange"
+>
+  <option v-for="year in yearOptions" :key="year" :value="year">
+    {{ year }}
+  </option>
+</select>
       <label for="week-select">Select Week:</label>
       <select
         id="week-select"
@@ -12,7 +22,8 @@
           No weeks available
         </option>
         <!-- <option v-for="week in weekOptions" :key="week" :value="week">Week {{ week }}</option> -->
-        <option v-for="week in weekOptions" :key="week.key" :value="week.key">
+        <!-- <option v-for="week in weekOptions" :key="week.key" :value="week.key"> -->
+        <option v-for="week in filteredWeekOptions" :key="week.key" :value="week.key">
           Week {{ week.weekID }} | {{ week.startDate }} – {{ week.endDate }}
         </option>
       </select>
@@ -45,10 +56,20 @@ export default {
       weekOptions: [],
       // selectedWeekID: null,
       selectedWeekKey: null,
+      selectedYear: null,
+    yearOptions: [],
       loading: false,
       errorMessage: "",
     };
   },
+  
+  computed: {
+    filteredWeekOptions() {
+      if (!this.selectedYear) return this.weekOptions;
+      return this.weekOptions.filter(w => w.year === this.selectedYear);
+    }
+  },
+  
   async mounted() {
     console.log("=== Component Mounted ===");
     console.log("Filters:", this.filters);
@@ -72,9 +93,11 @@ export default {
         if (this.weekOptions.length > 0) {
           // this.selectedWeekID = this.weekOptions[this.weekOptions.length - 1];
           // this.selectedWeekID = this.weekOptions[this.weekOptions.length - 1].weekID;
-          this.selectedWeekKey =
-            this.weekOptions[this.weekOptions.length - 1].key;
-          console.log("Selected week:", this.selectedWeekID);
+          // this.selectedWeekKey =
+          //   this.weekOptions[this.weekOptions.length - 1].key;
+          // console.log("Selected week:", this.selectedWeekID);
+          const weeks = this.filteredWeekOptions;
+this.selectedWeekKey = weeks[weeks.length - 1]?.key;
           await this.refreshChart();
         } else {
           this.errorMessage = "No week data available";
@@ -130,7 +153,7 @@ export default {
         console.log("Request params:", params);
 
         const response = await axios.get(
-          "http://localhost:5000/api/EICCControl",
+          "http://16.176.50.155:5000/api/EICCControl",
           { params }
         );
 
@@ -175,6 +198,12 @@ export default {
         this.weekOptions = Object.values(weekMap).sort((a, b) =>
           a.year !== b.year ? a.year - b.year : a.weekID - b.weekID
         );
+
+        this.yearOptions = [
+  ...new Set(this.weekOptions.map(w => w.year))
+].sort((a, b) => b - a);
+
+this.selectedYear = this.yearOptions[0];
       } catch (error) {
         // console.error("❌ Error fetching weeks:", error);
         // console.error("Error response:", error.response?.data);
@@ -183,6 +212,15 @@ export default {
         this.loading = false;
       }
     },
+
+    onYearChange() {
+    const weeks = this.filteredWeekOptions;
+
+    if (weeks.length > 0) {
+      this.selectedWeekKey = weeks[weeks.length - 1].key;
+      this.refreshChart();
+    }
+  },
 
     onWeekChange() {
       console.log("=== Week Changed ===", this.selectedWeekID);
@@ -212,8 +250,8 @@ export default {
         console.log("Request params with weekID:", params);
 
         const [workRes, empRes] = await Promise.all([
-          axios.get("http://localhost:5000/api/EICCControl", { params }),
-          axios.get("http://localhost:5000/api/EmployeeInfo"),
+          axios.get("http://16.176.50.155:5000/api/EICCControl", { params }),
+          axios.get("http://16.176.50.155:5000/api/EmployeeInfo"),
         ]);
 
         this.worktime = workRes.data;

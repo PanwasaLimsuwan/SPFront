@@ -55,9 +55,9 @@ const formatDate = (d) =>
 // ✅ ดึง pending พร้อมชื่อพนักงาน (JOIN กับ EmployeeInfo)
 const fetchPending = async () => {
   try {
-    const res = await axios.get("http://localhost:5000/api/Assignment?status=Pending");
+    const res = await axios.get("http://16.176.50.155:5000/api/Assignment?status=Pending");
     // ดึงชื่อพนักงานเพิ่มเติม
-    const empRes = await axios.get("http://localhost:5000/api/EmployeeInfo").catch(() => ({ data: [] }));
+    const empRes = await axios.get("http://16.176.50.155:5000/api/EmployeeInfo").catch(() => ({ data: [] }));
     const empMap = new Map(
       (empRes.data || []).map((e) => [
         String(e.empID),
@@ -76,7 +76,7 @@ const fetchPending = async () => {
 const approve = async (item) => {
   if (!confirm(`อนุมัติการย้าย ${item.empName || item.empID} → ${item.toProcess}?`)) return;
   try {
-    await axios.put(`http://localhost:5000/api/Assignment/${item.assignmentID}/approve`);
+    await axios.put(`http://16.176.50.155:5000/api/Assignment/${item.assignmentID}/approve`);
     alert("✅ อนุมัติสำเร็จ");
     await fetchPending();
     refreshBarChart();
@@ -90,7 +90,7 @@ const reject = async (item) => {
   if (!confirm(`ปฏิเสธการย้าย ${item.empName || item.empID}?`)) return;
   try {
     await axios.put(
-      `http://localhost:5000/api/Assignment/${item.assignmentID}/status?status=Rejected`
+      `http://16.176.50.155:5000/api/Assignment/${item.assignmentID}/status?status=Rejected`
     );
     alert("❌ ปฏิเสธและยกเลิก Assignment สำเร็จ");
     await fetchPending();

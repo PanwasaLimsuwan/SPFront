@@ -131,7 +131,7 @@ const loading     = ref(false);
 // ✅ ดึงข้อมูลจาก JWT token
 const currentUser = computed(() => {
   try {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return {};
     return jwt_decode(token);
   } catch { return {}; }
@@ -219,7 +219,7 @@ const filtered = computed(() =>
 //     }
 
 //     const res = await axios.get(
-//       "http://localhost:5000/api/Assignment/with-employees", { params }
+//       "http://16.176.50.155:5000/api/Assignment/with-employees", { params }
 //     );
 //     assignments.value = res.data ?? [];
 //   } catch (err) {
@@ -237,18 +237,18 @@ const fetchData = async () => {
       const params = {};
       if (props.filters?.biz     !== "ALL") params.toBiz     = props.filters.biz;
       if (props.filters?.process !== "ALL") params.toProcess = props.filters.process;
-      const res = await axios.get("http://localhost:5000/api/Assignment/with-employees",{params});
+      const res = await axios.get("http://16.176.50.155:5000/api/Assignment/with-employees",{params});
       results = res.data ?? [];
     } else {
       // ✅ ดึง 2 ชุดพร้อมกัน: ฝั่ง From และ ฝั่ง To
       const [fromRes, toRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/Assignment/with-employees", {
+        axios.get("http://16.176.50.155:5000/api/Assignment/with-employees", {
           params: {
             ...(userBiz.value     && { fromBiz:     userBiz.value }),
             ...(userProcess.value && { fromProcess: userProcess.value }),
           }
         }),
-        axios.get("http://localhost:5000/api/Assignment/with-employees", {
+        axios.get("http://16.176.50.155:5000/api/Assignment/with-employees", {
           params: {
             ...(userBiz.value     && { toBiz:     userBiz.value }),
             ...(userProcess.value && { toProcess: userProcess.value }),
@@ -273,7 +273,7 @@ const fetchData = async () => {
 
 const approve = async (id) => {
   try {
-    await axios.put(`http://localhost:5000/api/Assignment/${id}/approve`);
+    await axios.put(`http://16.176.50.155:5000/api/Assignment/${id}/approve`);
     // await fetchData();
     await fetchData(); refreshBarChart(); emit("changed");
     refreshBarChart();
@@ -286,7 +286,7 @@ const approve = async (id) => {
 const cancelAssignment = async (id) => {
   if (!confirm("ยืนยันการยกเลิก Assignment นี้?")) return;
   try {
-    await axios.put(`http://localhost:5000/api/Assignment/${id}/status?status=Cancelled`);
+    await axios.put(`http://16.176.50.155:5000/api/Assignment/${id}/status?status=Cancelled`);
     await fetchData();
     refreshBarChart();
     emit("changed");
@@ -297,7 +297,7 @@ const cancelAssignment = async (id) => {
 
 // const complete = async (id) => {
 //   try {
-//     await axios.put(`http://localhost:5000/api/Assignment/${id}/status?status=Completed`);
+//     await axios.put(`http://16.176.50.155:5000/api/Assignment/${id}/status?status=Completed`);
 //     await fetchData();
 //     refreshBarChart();
 //     emit("changed");
@@ -309,7 +309,7 @@ const cancelAssignment = async (id) => {
 // const cancel = async (id) => {
 //   if (!confirm("ยืนยันการยกเลิก Assignment นี้?")) return;
 //   try {
-//     await axios.put(`http://localhost:5000/api/Assignment/${id}/status?status=Cancelled`);
+//     await axios.put(`http://16.176.50.155:5000/api/Assignment/${id}/status?status=Cancelled`);
 //     await fetchData();
 //     refreshBarChart();
 //     emit("changed");
@@ -358,7 +358,7 @@ const returnEmployee = async (a) => {
 
   try {
     await axios.put(
-      `http://localhost:5000/api/Assignment/${a.assignmentID}/return?callerSide=${side}`
+      `http://16.176.50.155:5000/api/Assignment/${a.assignmentID}/return?callerSide=${side}`
     );
     await fetchData();
     refreshBarChart();
@@ -371,7 +371,7 @@ const returnEmployee = async (a) => {
 const confirmReturn = async (id) => {
   if (!confirm("ยืนยันรับทราบการคืนพนักงาน?")) return;
   try {
-    await axios.put(`http://localhost:5000/api/Assignment/${id}/confirm-return`);
+    await axios.put(`http://16.176.50.155:5000/api/Assignment/${id}/confirm-return`);
     await fetchData();
     refreshBarChart();
     emit("changed");

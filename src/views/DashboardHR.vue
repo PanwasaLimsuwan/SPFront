@@ -28,7 +28,7 @@ import StatusTabHR from "@/components/StatusTabHR.vue";
 // import InsightsWidget from "../components/InsightsWidget.vue";
 import Logout from "../views/Logout";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "http://16.176.50.155:5000/api";
 
 // ✅ ตัวแปรหลัก
 const employees = ref([]);
@@ -312,7 +312,7 @@ function applyLayoutFromIds(ids) {
 
 // ✅ Fetch widget settings
 const fetchWidgetSettings = async () => {
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
 
   if (!token) return [];
 
@@ -364,7 +364,7 @@ const fetchWidgetSettings = async () => {
 
 // ✅ Save widget settings
 const saveWidgetSettings = async () => {
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
 
   if (!token) {
     console.error("No token found");

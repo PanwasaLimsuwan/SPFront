@@ -6,7 +6,7 @@ const props = defineProps({
   filters: Object
 });
 
-const api = axios.create({ baseURL: 'http://localhost:5000/api' });
+const api = axios.create({ baseURL: 'http://16.176.50.155:5000/api' });
 
 const loading = ref(false);
 const selected = ref('skill-gaps'); // ค่าเริ่มต้น
